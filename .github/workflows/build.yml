@@ -1,0 +1,28 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  windows-x64:
+    runs-on: windows-2022
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build/x64 -G "Visual Studio 17 2022" -A x64
+      - name: Build WowClient (Release)
+        run: cmake --build build/x64 --config Release --target WowClient --parallel
+      - name: Collect
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          Get-ChildItem bin -Recurse -Include *.exe,*.dll,*.pdb | Copy-Item -Destination out
+          Get-ChildItem out | Format-Table Name, Length
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wowclient-x64-${{ github.sha }}
+          path: out/
+          retention-days: 14
