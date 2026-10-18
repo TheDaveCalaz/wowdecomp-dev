@@ -152,4 +152,40 @@
 
 	<!-- A scroll frame with the 3.3.5 scroll bar. -->
 	<ScrollFrame name="ScrollFrameTemplate" inherits="UIPanelScrollFrameTemplate" virtual="true"/>
+	<!-- Dialog borders. -->
+	<Frame name="DialogBorderTemplate" virtual="true" setAllPoints="true">
+		<Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
+			<EdgeSize><AbsValue val="32"/></EdgeSize>
+			<TileSize><AbsValue val="32"/></TileSize>
+			<BackgroundInsets><AbsInset left="11" right="12" top="12" bottom="11"/></BackgroundInsets>
+		</Backdrop>
+	</Frame>
+	<Frame name="DialogBorderDarkTemplate" virtual="true" setAllPoints="true">
+		<Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background-Dark" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
+			<EdgeSize><AbsValue val="32"/></EdgeSize>
+			<TileSize><AbsValue val="32"/></TileSize>
+			<BackgroundInsets><AbsInset left="11" right="12" top="12" bottom="11"/></BackgroundInsets>
+		</Backdrop>
+	</Frame>
+	<Frame name="DialogBorderOpaqueTemplate" virtual="true" setAllPoints="true">
+		<Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background-Dark" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
+			<EdgeSize><AbsValue val="32"/></EdgeSize>
+			<TileSize><AbsValue val="32"/></TileSize>
+			<BackgroundInsets><AbsInset left="11" right="12" top="12" bottom="11"/></BackgroundInsets>
+		</Backdrop>
+		<Scripts>
+			<OnLoad>
+				self:SetBackdropColor(0, 0, 0, 1)
+			</OnLoad>
+		</Scripts>
+	</Frame>
+	<Frame name="DialogBorderTranslucentTemplate" inherits="DialogBorderTemplate" virtual="true"/>
+	<Frame name="DialogBorderNoCenterTemplate" virtual="true" setAllPoints="true">
+		<Backdrop edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
+			<EdgeSize><AbsValue val="32"/></EdgeSize>
+		</Backdrop>
+	</Frame>
+
+	<!-- A plain stretchable button. -->
+	<Button name="UIMenuButtonStretchTemplate" inherits="UIPanelButtonTemplate" virtual="true"/>
 </Ui>

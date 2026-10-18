@@ -181,6 +181,18 @@ add(allRegions, "IsMouseClickEnabled", function(self) return self.IsMouseEnabled
 add(allRegions, "IsMouseMotionEnabled", function(self) return self.IsMouseEnabled and self:IsMouseEnabled() and true or false end)
 add(allRegions, "IsMouseMotionFocus", function(self) return GetMouseFocus() == self end)
 add(allRegions, "SetCollapsesLayout", noop)
+-- Regions (textures, font strings) take their scale from their frame.
+for _, index in ipairs(regionTypes) do
+	if rawget(index, "GetEffectiveScale") == nil then
+		index.GetEffectiveScale = function(self)
+			local parent = self:GetParent()
+			return parent and parent:GetEffectiveScale() or UIParent:GetEffectiveScale()
+		end
+	end
+	if rawget(index, "GetScale") == nil then
+		index.GetScale = function() return 1 end
+	end
+end
 add(allRegions, "SetDrawLayerEnabled", noop)
 
 -- Frames ------------------------------------------------------------------------------------------
@@ -778,6 +790,10 @@ if _G.BackdropTemplateMixin == nil then
 		SetupTextureCoordinates = noop,
 		SetBorderBlendMode = noop,
 	}
+end
+
+if _G.TooltipBackdropTemplateMixin == nil then
+	_G.TooltipBackdropTemplateMixin = CreateFromMixins(BackdropTemplateMixin)
 end
 
 local function backdrop(bg, edge, tile, tileSize, edgeSize, inset)

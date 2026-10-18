@@ -5,6 +5,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 from lupa import lua51
 L = lua51.LuaRuntime(unpack_returned_tuples=True)
 L.execute(open(HERE + '/mock.lua').read())
+if os.path.exists(HERE + '/compat.lua'): L.execute(open(HERE + '/compat.lua').read())
 missing = set()
 L.globals()['_note'] = lambda k: missing.add(k)
 L.execute('setmetatable(_G, {__index = function(t, k) _note(k) return nil end})')

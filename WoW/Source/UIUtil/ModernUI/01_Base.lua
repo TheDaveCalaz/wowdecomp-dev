@@ -14,11 +14,22 @@ end
 
 -- Mixins ----------------------------------------------------------------------------------------
 
+-- A missing mixin is reported (with where it was asked for) but does not stop the file that asked,
+-- so one mixin this client lacks costs one feature rather than a whole addon.
+local reportedMixins = {}
 define("Mixin", function(object, ...)
 	for i = 1, select("#", ...) do
 		local mixin = select(i, ...)
-		for k, v in pairs(mixin) do
-			object[k] = v
+		if type(mixin) == "table" then
+			for k, v in pairs(mixin) do
+				object[k] = v
+			end
+		else
+			local where = debugstack and debugstack(2, 1, 0) or "?"
+			if not reportedMixins[where] then
+				reportedMixins[where] = true
+				securecall(error, "Mixin: argument " .. (i + 1) .. " is not a table (a mixin this client lacks), called from " .. where, 0)
+			end
 		end
 	end
 	return object

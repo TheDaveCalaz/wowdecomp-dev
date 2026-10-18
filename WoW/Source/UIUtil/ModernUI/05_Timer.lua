@@ -6,7 +6,7 @@ if _G.C_Timer and _G.C_Timer.After then
 	return
 end
 
-local GetTime, geterrorhandler, xpcall, type, error = GetTime, geterrorhandler, xpcall, type, error
+local GetTime, securecall, type, error = GetTime, securecall, type, error
 
 local C_Timer = _G.C_Timer or {}
 _G.C_Timer = C_Timer
@@ -16,10 +16,6 @@ local adding = {}   -- timers created while pending is being walked
 local walking = false
 local frame = CreateFrame("Frame")
 frame:Hide()
-
-local function errorHandler(err)
-	return geterrorhandler()(err)
-end
 
 local function schedule(timer)
 	if walking then
@@ -49,14 +45,15 @@ frame:SetScript("OnUpdate", function(self)
 				else
 					timer._fireAt = now + timer._interval
 				end
-				xpcall(function() timer._callback(timer) end, errorHandler)
+				securecall(timer._callback, timer)
 			else
 				timer._cancelled = true
 				local callback = timer._callback
+				-- securecall reports an error to the client's error handler (and the log) and carries on.
 				if timer._handle then
-					xpcall(function() callback(timer) end, errorHandler)
+					securecall(callback, timer)
 				else
-					xpcall(callback, errorHandler)
+					securecall(callback)
 				end
 			end
 			if timer._cancelled then

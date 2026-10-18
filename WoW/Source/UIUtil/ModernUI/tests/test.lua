@@ -127,4 +127,10 @@ check("addon prefix", C_ChatInfo.RegisterAddonMessagePrefix("Foo") == 0 and C_Ch
 check("spec by id", select(2, GetSpecializationInfoByID(73)) == "Protection")
 check("GenerateClosure", GenerateClosure(function(a, b, c) return a .. b .. c end, "x", "y")("z") == "xyz")
 check("Ambiguate", Ambiguate("Bob-MyRealm", "none") == "Bob-MyRealm" and Ambiguate("Bob-MyRealm", "short") == "Bob")
+local tf = {}
+Mixin(tf, SecondsFormatterMixin)
+tf:Init(0, SecondsFormatter.Abbreviation.OneLetter)
+check("seconds formatter", tf:Format(3725) == "1 h 2 m" and tf:Format(0) == "0 s" and tf:Format(45) == "45 s")
+check("mixin tolerates nil", pcall(Mixin, {}, nil) == true)
+check("abbreviate", AbbreviateLargeNumbers(1234567) == "1.2M")
 print(fails == 0 and "ALL PASSED" or (fails .. " FAILED"))

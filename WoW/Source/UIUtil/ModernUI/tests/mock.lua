@@ -77,7 +77,8 @@ function _new(kind)
 end
 function CreateFrame(kind) if kind == "Bogus" then error("bad type") end return _new(kind) end
 function geterrorhandler() return function(e) print("ERRORHANDLER: "..tostring(e)) end end
-function securecall(f, ...) return f(...) end
+function securecall(f, ...) local r = {pcall(f, ...)} if not r[1] then print("SECURECALL: " .. tostring(r[2])) return end return unpack(r, 2) end
+function debugstack() return "here" end
 function hooksecurefunc(name, f) local o = _G[name]; _G[name] = function(...) local r = {o(...)}; f(...); return unpack(r) end end
 function IsLoggedIn() return false end
 function IsAddOnLoaded() return nil end

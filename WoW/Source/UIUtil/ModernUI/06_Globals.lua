@@ -463,3 +463,14 @@ define("BNGetInfo", function() return nil end)
 if _G.QuestLogListScrollFrame == nil and _G.QuestLogScrollFrame then
 	_G.QuestLogListScrollFrame = QuestLogScrollFrame
 end
+
+-- More modern strings and constants read at load time.
+for i, name in ipairs({ "Poor", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Artifact", "Heirloom", "WoW Token" }) do
+	define("ITEM_QUALITY" .. (i - 1) .. "_DESC", name)
+end
+define("ITEM_UPGRADE_TOOLTIP_FORMAT", "Upgrade Level: %d/%d")
+define("AMMO_DAMAGE_TEMPLATE", "Adds %s damage per second")
+define("CR_CRIT_TOOLTIP", "Critical Strike\nChance of extra effectiveness on damage and healing.")
+define("STAT_HASTE_BASE_TOOLTIP", "Haste\nIncreases attack speed and spell casting speed.")
+define("CR_VERSATILITY_TOOLTIP", "Versatility\nIncreases damage and healing done and reduces damage taken.")
+define("ITEM_SET_BONUS_GRAY", ITEM_SET_BONUS or "Set: %s")

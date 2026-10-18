@@ -363,10 +363,15 @@ static int luaB_pcall (lua_State *L) {
 // OFFSET: 0x008549D0
 static int luaB_xpcall (lua_State *L) {
   int status;
+  int nargs;
   luaL_checkany(L, 2);
-  lua_settop(L, 2);
+  /* Not in the original: arguments after the error function are passed to the function, as modern
+     clients (and Lua 5.2) do: xpcall(f, handler, a, b) calls f(a, b). */
+  nargs = lua_gettop(L) - 2;
+  lua_pushvalue(L, 2);
+  lua_remove(L, 2);
   lua_insert(L, 1);  /* put error function under function to be called */
-  status = lua_pcall(L, 0, LUA_MULTRET, 1);
+  status = lua_pcall(L, nargs, LUA_MULTRET, 1);
   lua_pushboolean(L, (status == 0));
   lua_replace(L, 1);
   return lua_gettop(L);  /* return status + all results */
