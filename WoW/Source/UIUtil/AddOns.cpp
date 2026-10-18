@@ -42,6 +42,73 @@ static char s_addOnAccountName[1280];
 // STATIC: 0x00C24918
 static bool s_addOnsInitialized;
 
+// ---------------------------------------------------------------------------------------------------------------
+// MODERN ADDONS (not in the original client)
+//
+// Modern clients let one addon folder carry a .toc per game flavour (Name_Mainline.toc, Name_Wrath.toc,
+// Name-Classic.toc, ...) and fall back to Name.toc. This client is a Wrath client, so it looks for the Wrath
+// and Classic tocs first, then the plain one, then the nearest other flavours, so an addon that only ships a
+// retail or other-flavour toc still loads. Every place that opens an addon's toc goes through this, so the
+// signature digest and the load always read the same file.
+static const char* s_tocFlavours[] = {
+    "_Wrath", "-Wrath", "_WOTLKC", "-WOTLKC", "_Classic", "-Classic", "",
+    "_Cata", "-Cata", "_Mists", "-Mists", "_TBC", "-TBC", "_BCC", "-BCC", "_Vanilla", "-Vanilla",
+    "_Mainline", "-Mainline",
+};
+
+bool ResolveAddOnToc(const char* name, char* out, uint32_t size) {
+    for (const char* flavour : s_tocFlavours) {
+        SStrPrintf(out, size, "Interface\\AddOns\\%s\\%s%s.toc", name, name, flavour);
+
+        if (SFile::FileExistsEx(out, 1)) {
+            return true;
+        }
+    }
+
+    SStrPrintf(out, size, "Interface\\AddOns\\%s\\%s.toc", name, name);
+    return false;
+}
+
+// "## Interface: 11507, 38002, 110200" lists every client an addon supports. Anything at or above this client's
+// version is treated as current (modern addons target newer clients by definition); otherwise the highest value
+// listed is kept so genuinely old addons are still reported as out of date.
+static uint32_t ParseInterfaceVersions(const char* p) {
+    uint32_t best = 0;
+
+    while (*p) {
+        while (*p == ' ' || *p == ',' || *p == '\t') {
+            p++;
+        }
+
+        if (!*p) {
+            break;
+        }
+
+        uint32_t value = SStrToUnsigned(p);
+
+        if (value >= 30300) {
+            return 30300;
+        }
+
+        if (value > best) {
+            best = value;
+        }
+
+        while (*p && *p != ',') {
+            p++;
+        }
+    }
+
+    return best;
+}
+
+static bool IsOurFlavour(const char* flavour) {
+    return !SStrCmpI(flavour, "Wrath", STORM_MAX_STR) || !SStrCmpI(flavour, "WOTLKC", STORM_MAX_STR)
+        || !SStrCmpI(flavour, "Classic", STORM_MAX_STR);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+
 // VERIFY: e4678852 auto
 // OFFSET: 0x005F4910
 static void ReadDataInterfaceVersion() {
@@ -381,6 +448,7 @@ UIADDON::UIADDON() {
     this->m_loading = false;
     this->m_loaded = 0;
     this->m_interfaceVersion = 0;
+    this->m_flavourInterface = false;
     this->m_revision = 0;
     this->m_secure = false;
     this->m_blizzard = 0;
@@ -714,7 +782,7 @@ void SetAddOnInfoRequest(CDataStore* msg) {
         const char* name = addon->m_key.m_str;
         char toc[260];
         char bindings[260];
-        SStrPrintf(toc, sizeof(toc), "Interface\\AddOns\\%s\\%s.toc", name, name);
+        ResolveAddOnToc(name, toc, sizeof(toc));
         SStrPrintf(bindings, sizeof(bindings), "Interface\\AddOns\\%s\\Bindings.xml", name);
 
         int32_t result = FrameXML_CheckSignature(toc, bindings, addon->m_hasPublicKey ? addon->m_publicKey : nullptr, addon->m_digest);
@@ -1048,7 +1116,7 @@ bool LoadAddOn(const char* name, bool demandLoad, CStatus* status) {
         MD5Init(&md5);
 
         char path[260];
-        SStrPrintf(path, sizeof(path), "Interface\\AddOns\\%s\\%s.toc", addonName, addonName);
+        ResolveAddOnToc(addonName, path, sizeof(path));
         lua_State* L = FrameScript_GetContext();
         lua_createtable(L, 0, 0);
         FrameXML_CreateFrames(path, addonName, &md5, &addonStatus);
@@ -1133,7 +1201,10 @@ static void LoadAddOnInfo(const char* name) {
     }
 
     char path[260];
-    SStrPrintf(path, sizeof(path), "Interface\\AddOns\\%s\\%s.toc", name, name);
+
+    if (!ResolveAddOnToc(name, path, sizeof(path))) {
+        return;
+    }
 
     void* data;
 
@@ -1176,7 +1247,29 @@ static void LoadAddOnInfo(const char* name) {
                     p++;
                 }
 
-                addon->m_interfaceVersion = SStrToUnsigned(p);
+                if (!addon->m_flavourInterface) {
+                    addon->m_interfaceVersion = ParseInterfaceVersions(p);
+                }
+            } else if (!SStrCmpI(p, "Interface-", SStrLen("Interface-"))) {
+                // "## Interface-Wrath: 38002": a version for one flavour, which wins over the plain line
+                char flavour[32];
+                const char* f = p + SStrLen("Interface-");
+                uint32_t n = 0;
+
+                while (*f && *f != ':' && *f != ' ' && n < sizeof(flavour) - 1) {
+                    flavour[n++] = *f++;
+                }
+
+                flavour[n] = '\0';
+
+                while (*f == ':' || *f == ' ') {
+                    f++;
+                }
+
+                if (IsOurFlavour(flavour)) {
+                    addon->m_interfaceVersion = ParseInterfaceVersions(f);
+                    addon->m_flavourInterface = true;
+                }
             } else if (!SStrCmpI(p, "Title", 5) || !SStrCmpI(p, "Notes", 5) || !SStrCmpI(p, "Author", 6) || !SStrCmpI(p, "Version", 7) || !SStrCmpI(p, "X-", 2)) {
                 LoadAddOnMetadata(addon, p);
             } else if (!SStrCmpI(p, "Revision:", SStrLen("Revision:"))) {
@@ -1351,6 +1444,10 @@ static void LoadAddOnInfo(const char* name) {
                 }
 
                 addon->m_secure = StringToBOOL(p) != 0;
+            } else if (SStrChr(p, ':')) {
+                // any other "## Key: value" (IconTexture, Category, Group, AddonCompartmentFunc, ...) is metadata
+                // GetAddOnMetadata can return, as on modern clients
+                LoadAddOnMetadata(addon, p);
             }
         }
 

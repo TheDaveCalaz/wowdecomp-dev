@@ -16,7 +16,8 @@ struct UIADDON : public TSHashObject<UIADDON, HASHKEY_STRI> {
 
     /* 0018 */ bool m_loading;
     /* 0019 */ bool m_loaded;
-    /* 001A */ uint8_t unused_001A[2];
+    /* 001A */ bool m_flavourInterface;     // not in the original: a "## Interface-<flavour>:" line set the version
+    /* 001B */ uint8_t unused_001B;
     /* 001C */ uint32_t m_interfaceVersion;
     /* 0020 */ uint32_t m_revision;
     /* 0024 */ uint32_t m_status;
@@ -64,6 +65,7 @@ struct ADDONSTATELIST : public TSLinkedNode<ADDONSTATELIST> {
 };
 
 void DeleteInterfaceFiles();
+bool ResolveAddOnToc(const char* name, char* out, uint32_t size);
 void GetAddOnInfoRequest(CDataStore* msg);
 void SetAddOnInfoRequest(CDataStore* msg);
 

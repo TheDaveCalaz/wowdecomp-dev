@@ -569,6 +569,56 @@ int32_t FrameXML_ProcessFile(const char* filename, const char* wrapper, MD5_CTX*
     return 1;
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// MODERN ADDONS (not in the original client)
+//
+// Modern .toc files can name files through variables: "[Family]" (Mainline or Classic) and "[Game]" (Standard,
+// Vanilla, TBC, Wrath, Cata, Mists). This client is a Wrath client, so they read Classic and Wrath; when an addon
+// has no Classic or Wrath copy of a file, the Mainline/Standard one is used instead. Leading spaces and tabs
+// before a file name are allowed, as on modern clients.
+static void ExpandTocLine(const char* line, char* out, size_t size, const char* family, const char* game) {
+    size_t o = 0;
+
+    while (*line == ' ' || *line == '\t') {
+        line++;
+    }
+
+    while (*line && o + 1 < size) {
+        const char* value = nullptr;
+        size_t skip = 0;
+
+        if (!SStrCmpI(line, "[Family]", 8)) {
+            value = family;
+            skip = 8;
+        } else if (!SStrCmpI(line, "[Game]", 6)) {
+            value = game;
+            skip = 6;
+        }
+
+        if (value) {
+            while (*value && o + 1 < size) {
+                out[o++] = *value++;
+            }
+
+            line += skip;
+        } else {
+            out[o++] = *line++;
+        }
+    }
+
+    out[o] = '\0';
+}
+
+static void TrimTrailingSpaces(char* path) {
+    size_t length = SStrLen(path);
+
+    while (length && (path[length - 1] == ' ' || path[length - 1] == '\t')) {
+        path[--length] = '\0';
+    }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+
 // VERIFY: a8106274 manual
 // OFFSET: 0x00814340
 int32_t FrameXML_CreateFrames(const char* tocFile, const char* wrapper, MD5_CTX* md5, CStatus* status) {
@@ -616,25 +666,26 @@ int32_t FrameXML_CreateFrames(const char* tocFile, const char* wrapper, MD5_CTX*
             break;
         }
 
-        if (line[0] != '#') {
+        const char* first = line;
+
+        while (*first == ' ' || *first == '\t') {
+            first++;
+        }
+
+        if (*first && *first != '#') {
+            char expanded[1024];
             char path[260];
+            ExpandTocLine(line, expanded, sizeof(expanded), "Classic", "Wrath");
             SStrCopy(path, tocPath, sizeof(path));
-            SStrPack(path, line, sizeof(path));
+            SStrPack(path, expanded, sizeof(path));
+            TrimTrailingSpaces(path);
 
-            size_t length = SStrLen(path);
-            char* end = &path[length];
-
-            if (path[length - 1] == ' ') {
-                do {
-                    if (end <= path) {
-                        break;
-                    }
-
-                    end--;
-                } while (end[-1] == ' ');
+            if ((SStrStrI(line, "[Family]") || SStrStrI(line, "[Game]")) && !SFile::FileExistsEx(path, 1)) {
+                ExpandTocLine(line, expanded, sizeof(expanded), "Mainline", "Standard");
+                SStrCopy(path, tocPath, sizeof(path));
+                SStrPack(path, expanded, sizeof(path));
+                TrimTrailingSpaces(path);
             }
-
-            *end = '\0';
 
             FrameXML_ProcessFile(path, wrapper, md5, &tocStatus);
 
