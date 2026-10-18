@@ -1134,6 +1134,36 @@ static int32_t FrameScript_HandleError(lua_State* L) {
         s_inErrorHandler = 0;
     }
 
+    // Not in the original: the message logged also says where it was called from (up to four callers),
+    // so an error inside a shared helper names the addon line that reached it.
+    {
+        char trail[512];
+        size_t used = 0;
+        lua_Debug ar;
+        trail[0] = '\0';
+
+        for (int32_t level = 1, shown = 0; shown < 4 && lua_getstack(L, level, &ar); level++) {
+            if (!lua_getinfo(L, "Sl", &ar) || ar.currentline <= 0 || !ar.short_src[0]) {
+                continue;
+            }
+
+            int32_t written = SStrPrintf(trail + used, sizeof(trail) - used, "%s %s:%d", shown ? "," : " (from", ar.short_src, ar.currentline);
+
+            if (written <= 0 || used + written >= sizeof(trail) - 2) {
+                break;
+            }
+
+            used += written;
+            shown++;
+        }
+
+        if (used) {
+            SStrPack(trail, ")", sizeof(trail));
+            lua_pushstring(L, trail);
+            lua_concat(L, 2);
+        }
+    }
+
     return 1;
 }
 

@@ -474,3 +474,50 @@ define("CR_CRIT_TOOLTIP", "Critical Strike\nChance of extra effectiveness on dam
 define("STAT_HASTE_BASE_TOOLTIP", "Haste\nIncreases attack speed and spell casting speed.")
 define("CR_VERSATILITY_TOOLTIP", "Versatility\nIncreases damage and healing done and reduces damage taken.")
 define("ITEM_SET_BONUS_GRAY", ITEM_SET_BONUS or "Set: %s")
+define("ENCHANTED_TOOLTIP_LINE", "Enchanted: %s")
+define("CURRENCY_WEEKLY_CAP", "Weekly maximum: %s/%s")
+define("CURRENCY_TOTAL", "Total: %s")
+define("CURRENCY_TOTAL_CAP", "Total: %s/%s")
+define("SPECIALIZATION", "Specialization")
+define("SPECIALIZATIONS", "Specializations")
+define("ACCOUNT_QUEST_LABEL", "Account")
+define("REAGENT_BANK", "Reagent Bank")
+define("ACCOUNT_BANK_PANEL_TITLE", "Warband Bank")
+
+-- Font objects modern templates inherit from, made from the 3.3.5 ones.
+local function fontFrom(name, source, noShadow, r, g, b)
+	if _G[name] == nil and _G[source] then
+		local font = CreateFont(name)
+		font:SetFontObject(_G[source])
+		if noShadow then
+			font:SetShadowOffset(0, 0)
+			font:SetShadowColor(0, 0, 0, 0)
+		end
+		if r then
+			font:SetTextColor(r, g, b)
+		end
+	end
+end
+fontFrom("GameFontNormal_NoShadow", "GameFontNormal", true)
+fontFrom("GameFontHighlight_NoShadow", "GameFontHighlight", true)
+fontFrom("GameFontDisable_NoShadow", "GameFontDisable", true)
+fontFrom("GameFontNormalSmall2", "GameFontNormalSmall")
+fontFrom("GameFontHighlightSmall2", "GameFontHighlightSmall")
+fontFrom("GameFontNormalMed1", "GameFontNormal")
+fontFrom("GameFontNormalMed2", "GameFontNormalLarge")
+fontFrom("GameFontNormalMed3", "GameFontNormalLarge")
+fontFrom("GameFontHighlightMed2", "GameFontHighlightLarge")
+fontFrom("GameFontNormalLarge2", "GameFontNormalLarge")
+fontFrom("GameFontNormalHuge2", "GameFontNormalHuge")
+fontFrom("GameFontNormalShadowHuge2", "GameFontNormalHuge")
+fontFrom("SystemFont_Shadow_Med1", "GameFontNormal")
+fontFrom("SystemFont_Shadow_Small", "GameFontNormalSmall")
+fontFrom("Game11Font", "GameFontNormalSmall")
+fontFrom("Game12Font", "GameFontNormal")
+fontFrom("Game13Font", "GameFontNormal")
+fontFrom("Game15Font", "GameFontNormalLarge")
+fontFrom("Game18Font", "GameFontNormalLarge")
+fontFrom("Game20Font", "GameFontNormalHuge")
+fontFrom("Fancy16Font", "GameFontNormalLarge")
+fontFrom("Fancy22Font", "GameFontNormalHuge")
+fontFrom("Fancy24Font", "GameFontNormalHuge")
