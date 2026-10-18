@@ -958,3 +958,31 @@ do
 	local set = namespace("C_Housing")
 	set("IsHousingServiceEnabled", falseFn)
 end
+do
+	local set = namespace("C_GuildInfo")
+	set("GuildRoster", function() GuildRoster() end)
+	set("CanEditOfficerNote", function() return CanEditOfficerNote() and true or false end)
+	set("CanViewOfficerNote", function() return CanViewOfficerNote() and true or false end)
+	set("CanSpeakInGuildChat", function() return IsInGuild() and true or false end)
+	set("RemoveFromGuild", function(name) GuildUninvite(name) end)
+	set("IsGuildOfficer", function() return IsGuildLeader() or CanGuildRemove() end)
+	set("MemberExistsByName", function(name) return IsGuildMember(name) end)
+	set("QueryGuildMembersForRecipe", noop)
+	set("GetGuildTabardInfo", nilFn)
+	set("GetGuildNewsInfo", nilFn)
+	set("IsEncounterGuildNewsEnabled", falseFn)
+end
+do
+	-- Text to speech does not exist in this client.
+	local set = namespace("C_VoiceChat")
+	set("GetTtsVoices", emptyFn)
+	set("GetRemoteTtsVoices", emptyFn)
+	set("SpeakText", noop)
+	set("StopSpeakingText", noop)
+	set("IsSpeakForMeActive", falseFn)
+	set("IsSpeakForMeAllowed", falseFn)
+	set("GetTtsVoiceOptions", emptyFn)
+	set("IsTranscriptionAllowed", falseFn)
+	set("IsLoggedIn", falseFn)
+	set("IsEnabled", falseFn)
+end

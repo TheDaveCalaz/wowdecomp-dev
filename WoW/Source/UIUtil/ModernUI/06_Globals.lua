@@ -413,3 +413,53 @@ define("GetAddOnEnableState", function(character, name)
 	local _, _, _, enabled = GetAddOnInfo(name)
 	return enabled and 2 or 0
 end)
+
+-- Constants and strings modern code reads at load time ------------------------------------------
+
+define("NUM_LE_EXPANSION_LEVELS", 2)
+define("EXPANSION_NAME0", "Classic")
+define("EXPANSION_NAME1", "The Burning Crusade")
+define("EXPANSION_NAME2", "Wrath of the Lich King")
+define("NUM_BANKBAGSLOTS", 7)
+define("NUM_BAG_SLOTS", 4)
+define("Constants", {})
+Constants.InventoryConstants = Constants.InventoryConstants or {
+	NumBagSlots = 4, NumReagentBagSlots = 0, NumCharacterBankSlots = 7, NumAccountBankSlots = 0,
+}
+define("LE_UNIT_STAT_STRENGTH", 1)
+define("LE_UNIT_STAT_AGILITY", 2)
+define("LE_UNIT_STAT_STAMINA", 3)
+define("LE_UNIT_STAT_INTELLECT", 4)
+define("LE_UNIT_STAT_SPIRIT", 5)
+define("ON_USE", ITEM_SPELL_TRIGGER_ONUSE or "Use:")
+define("ON_EQUIP", ITEM_SPELL_TRIGGER_ONEQUIP or "Equip:")
+define("ON_PROC", ITEM_SPELL_TRIGGER_ONPROC or "Chance on hit:")
+define("ITEM_BONUS", "Bonus:")
+define("ITEM_LEVEL_PLUS", "Item Level %d+")
+define("STAT_HASTE", SPELL_STAT_HASTE or "Haste")
+define("STAT_CRITICAL_STRIKE", "Critical Strike")
+define("STAT_MASTERY", "Mastery")
+define("STAT_VERSATILITY", "Versatility")
+define("STAT_AVOIDANCE", "Avoidance")
+define("STAT_LIFESTEAL", "Leech")
+define("STAT_SPEED", "Speed")
+define("STAT_MOVEMENT_SPEED", "Movement Speed")
+
+-- Difficulty IDs: modern numbering (3/4 = 10/25 normal, 5/6 = 10/25 heroic) from 3.3.5's own settings.
+local raidDifficultyIDs = { [1] = 3, [2] = 4, [3] = 5, [4] = 6 }
+local raidDifficultyIndex = tInvert(raidDifficultyIDs)
+define("GetRaidDifficultyID", function() return raidDifficultyIDs[GetRaidDifficulty()] or 3 end)
+define("GetDungeonDifficultyID", function() return GetDungeonDifficulty() or 1 end)
+define("GetLegacyRaidDifficultyID", function() return raidDifficultyIDs[GetRaidDifficulty()] or 3 end)
+define("SetRaidDifficultyID", function(id) if raidDifficultyIndex[id] then SetRaidDifficulty(raidDifficultyIndex[id]) end end)
+define("SetDungeonDifficultyID", function(id) if id == 1 or id == 2 then SetDungeonDifficulty(id) end end)
+define("SetLegacyRaidDifficultyID", function(id) if raidDifficultyIndex[id] then SetRaidDifficulty(raidDifficultyIndex[id]) end end)
+
+-- Battle.net game data messages do not exist in this client; defined so code can hook them.
+define("BNSendGameData", function() end)
+define("BNGetInfo", function() return nil end)
+
+-- Frame names that changed after 3.3.5.
+if _G.QuestLogListScrollFrame == nil and _G.QuestLogScrollFrame then
+	_G.QuestLogListScrollFrame = QuestLogScrollFrame
+end

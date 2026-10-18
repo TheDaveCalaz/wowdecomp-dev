@@ -489,8 +489,29 @@ local frameTypeAliases = {
 	ScrollBox = "Frame", ScrollBar = "Frame", MinimalScrollBar = "Frame",
 }
 
+-- Templates this client provides natively (backdrops are built into every 3.3.5 frame) are taken out of
+-- the template list, so CreateFrame does not warn that it cannot find them.
+local nativeTemplates = { BackdropTemplate = "BackdropTemplateMixin" }
+local function stripTemplates(template)
+	if type(template) ~= "string" then
+		return template, nil
+	end
+	local keep, mixins = {}, nil
+	for name in template:gmatch("[^,%s]+") do
+		if nativeTemplates[name] then
+			mixins = mixins or {}
+			mixins[#mixins + 1] = nativeTemplates[name]
+		else
+			keep[#keep + 1] = name
+		end
+	end
+	return #keep > 0 and table.concat(keep, ",") or nil, mixins
+end
+
 _G.CreateFrame = function(frameType, name, parent, template, id)
 	local alias = type(frameType) == "string" and frameTypeAliases[frameType]
+	local mixins
+	template, mixins = stripTemplates(template)
 	local frame = CreateFrame_335(alias or frameType, name, parent, template, id)
 	if alias == "Frame" and frameType == "EventFrame" and frame then
 		Mixin(frame, CallbackRegistryMixin)
@@ -499,7 +520,30 @@ _G.CreateFrame = function(frameType, name, parent, template, id)
 		frame:HookScript("OnShow", function(self) self:TriggerEvent("OnShow") end)
 		frame:HookScript("OnHide", function(self) self:TriggerEvent("OnHide") end)
 	end
+	if mixins and frame then
+		for _, mixinName in ipairs(mixins) do
+			local mixin = _G[mixinName]
+			if mixin then
+				for k, v in pairs(mixin) do
+					if frame[k] == nil then
+						frame[k] = v
+					end
+				end
+				if frame.OnBackdropLoaded then
+					frame:OnBackdropLoaded()
+				end
+			end
+		end
+	end
 	return frame
+end
+
+-- Blizzard frames some libraries read widget types from, missing in 3.3.5. Hidden and unused otherwise.
+if _G.ChatFrameChannelButton == nil then
+	CreateFrame_335("Button", "ChatFrameChannelButton", nil):Hide()
+end
+if _G.AddonListForceLoad == nil and _G.AddonList == nil then
+	CreateFrame_335("CheckButton", "AddonListForceLoad", nil):Hide()
 end
 
 -- Game events ---------------------------------------------------------------------------------------

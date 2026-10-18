@@ -1,3 +1,4 @@
+#include "Engine/Source/ConsoleBase/ConsoleVar.h"
 #include <cstdarg>
 #include <cstddef>
 #include <cstdint>
@@ -617,6 +618,106 @@ static void TrimTrailingSpaces(char* path) {
     }
 }
 
+// Modern .toc lines can end with load conditions, e.g. "Gems.lua [AllowLoadGameType mainline]",
+// "Localization.lua [AllowLoadTextLocale enUS]" or "[ExcludeLoadGameType camelot]". This client counts as the
+// "wrath" and "classic" game types. The conditions are removed from the file name; the line is skipped when they
+// rule this client out. Conditions this client does not know about do not stop a file loading.
+static bool ListHasToken(const char* list, size_t length, const char* const* tokens) {
+    const char* end = list + length;
+
+    while (list < end) {
+        while (list < end && (*list == ' ' || *list == ',' || *list == '\t')) {
+            list++;
+        }
+
+        const char* start = list;
+
+        while (list < end && *list != ',' && *list != ' ' && *list != '\t') {
+            list++;
+        }
+
+        size_t n = list - start;
+
+        for (const char* const* token = tokens; *token; ++token) {
+            if (n && SStrLen(*token) == n && !SStrCmpI(start, *token, n)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+static bool ApplyTocConditions(char* line) {
+    static const char* const s_gameTypes[] = { "wrath", "classic", nullptr };
+    char locale[8] = "enUS";
+    CVar* localeVar = CVar::Lookup("locale");
+
+    if (localeVar && localeVar->m_stringValue.m_str && SStrLen(localeVar->m_stringValue.m_str) == 4) {
+        SStrCopy(locale, localeVar->m_stringValue.m_str, sizeof(locale));
+    }
+
+    // enGB clients load the enUS files, as on modern clients.
+    if (!SStrCmpI(locale, "enGB", 4)) {
+        SStrCopy(locale, "enUS", sizeof(locale));
+    }
+
+    const char* const localeTokens[] = { locale, nullptr };
+    bool load = true;
+    char* cut = nullptr;
+
+    for (char* open = SStrChr(line, '['); open; open = SStrChr(open + 1, '[')) {
+        char* close = SStrChr(open, ']');
+
+        if (!close) {
+            break;
+        }
+
+        const char* rule = nullptr;
+        bool allow = false;
+        const char* const* tokens = nullptr;
+        static const char* const s_allowGame = "AllowLoadGameType";
+        static const char* const s_excludeGame = "ExcludeLoadGameType";
+        static const char* const s_allowLocale = "AllowLoadTextLocale";
+        static const char* const s_excludeLocale = "ExcludeLoadTextLocale";
+
+        if (!SStrCmpI(open + 1, s_allowGame, SStrLen(s_allowGame))) {
+            rule = s_allowGame; allow = true; tokens = s_gameTypes;
+        } else if (!SStrCmpI(open + 1, s_excludeGame, SStrLen(s_excludeGame))) {
+            rule = s_excludeGame; allow = false; tokens = s_gameTypes;
+        } else if (!SStrCmpI(open + 1, s_allowLocale, SStrLen(s_allowLocale))) {
+            rule = s_allowLocale; allow = true; tokens = localeTokens;
+        } else if (!SStrCmpI(open + 1, s_excludeLocale, SStrLen(s_excludeLocale))) {
+            rule = s_excludeLocale; allow = false; tokens = localeTokens;
+        } else if (!SStrCmpI(open + 1, "AllowLoad", 9) || !SStrCmpI(open + 1, "ExcludeLoad", 11)) {
+            rule = "";  // e.g. AllowLoadEnvironment: known kind of condition, no effect here
+        }
+
+        if (!rule) {
+            continue;
+        }
+
+        if (!cut) {
+            cut = open;
+        }
+
+        if (tokens) {
+            const char* list = open + 1 + SStrLen(rule);
+            bool match = ListHasToken(list, close - list, tokens);
+
+            if (allow != match) {
+                load = false;
+            }
+        }
+    }
+
+    if (cut) {
+        *cut = '\0';
+    }
+
+    return load;
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 
 // VERIFY: a8106274 manual
@@ -672,7 +773,7 @@ int32_t FrameXML_CreateFrames(const char* tocFile, const char* wrapper, MD5_CTX*
             first++;
         }
 
-        if (*first && *first != '#') {
+        if (*first && *first != '#' && ApplyTocConditions(line)) {
             char expanded[1024];
             char path[260];
             ExpandTocLine(line, expanded, sizeof(expanded), "Classic", "Wrath");

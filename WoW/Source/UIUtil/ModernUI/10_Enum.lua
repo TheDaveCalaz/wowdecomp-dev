@@ -202,3 +202,8 @@ enum("UIWidgetVisualizationType", {
 	ScenarioHeaderTimer = 20, TextColumnRow = 21, Spacer = 22, UnitPowerBar = 23, FillUpFrames = 24,
 	TextWithSubtext = 25, MapPinAnimation = 26, ItemDisplay = 27, TugOfWar = 28,
 })
+
+enum("QuestCompleteSpellType", {
+	LegacyBehavior = 0, Follower = 1, Tradeskill = 2, Ability = 3, Aura = 4, Spell = 5, Unlock = 6,
+	Companion = 7, QuestlineUnlock = 8, QuestlineReward = 9, QuestlineUnlockPart = 10, PossibleReward = 11,
+})
