@@ -54,7 +54,44 @@ static TSHashTable<FrameFactoryNode, HASHKEY_STRI> s_factories;
 
 // VERIFY: 3a773c6f auto
 // OFFSET: 0x00812530
+// Not in the original: XML files built into the exe (the modern addon layer's templates), looked up by name
+// before the game files.
+struct BuiltInXML {
+    const char* name;
+    const char* data;
+    uint32_t size;
+};
+
+static BuiltInXML s_builtInXML[16];
+static uint32_t s_numBuiltInXML = 0;
+
+void FrameXML_RegisterBuiltInFile(const char* name, const char* data, uint32_t size) {
+    for (uint32_t i = 0; i < s_numBuiltInXML; i++) {
+        if (!SStrCmpI(s_builtInXML[i].name, name, STORM_MAX_STR)) {
+            s_builtInXML[i].data = data;
+            s_builtInXML[i].size = size;
+            return;
+        }
+    }
+
+    if (s_numBuiltInXML < sizeof(s_builtInXML) / sizeof(s_builtInXML[0])) {
+        s_builtInXML[s_numBuiltInXML++] = { name, data, size };
+    }
+}
+
 XMLTree* FrameXML_LoadXML(const char* filename, MD5_CTX* md5, CStatus* status) {
+    for (uint32_t i = 0; i < s_numBuiltInXML; i++) {
+        if (!SStrCmpI(s_builtInXML[i].name, filename, STORM_MAX_STR)) {
+            XMLTree* tree = XMLTree_Load(s_builtInXML[i].data, s_builtInXML[i].size);
+
+            if (!tree) {
+                status->Add(STATUS_ERROR, "Couldn't parse XML in %s", filename);
+            }
+
+            return tree;
+        }
+    }
+
     void* data;
     uint32_t size;
 

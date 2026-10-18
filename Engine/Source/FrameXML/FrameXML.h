@@ -49,6 +49,7 @@ void FrameXML_FreeHashNodes();
 int32_t FrameXML_GetDebugLevel();
 int32_t FrameXML_GuessNumFiles(const char* toc);
 XMLTree* FrameXML_LoadXML(const char* filename, MD5_CTX* md5, CStatus* status);
+void FrameXML_RegisterBuiltInFile(const char* name, const char* data, uint32_t size); // not in the original
 int32_t FrameXML_ProcessFile(const char* filename, const char* wrapper, MD5_CTX* md5, CStatus* status);
 int32_t FrameXML_RegisterDefault();
 int32_t FrameXML_RegisterFactory(const char* name, CSimpleFrame* (*factory)(CSimpleFrame* parent), bool unique);

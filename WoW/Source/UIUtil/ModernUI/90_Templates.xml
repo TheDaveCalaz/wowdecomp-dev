@@ -1,0 +1,155 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	<!-- ModernUI: built into the client (not in the original 3.3.5a).
+	     Frame templates modern addons inherit from, made of 3.3.5 parts. -->
+
+	<!-- Backdrops are built into every 3.3.5 frame; the template only has to exist. -->
+	<Frame name="BackdropTemplate" virtual="true"/>
+
+	<Frame name="TooltipBackdropTemplate" virtual="true">
+		<Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+			<EdgeSize><AbsValue val="16"/></EdgeSize>
+			<TileSize><AbsValue val="16"/></TileSize>
+			<BackgroundInsets><AbsInset left="5" right="5" top="5" bottom="5"/></BackgroundInsets>
+		</Backdrop>
+		<Scripts>
+			<OnLoad>
+				self:SetBackdropColor(0, 0, 0, 0.9)
+			</OnLoad>
+		</Scripts>
+	</Frame>
+
+	<Frame name="TooltipBorderedFrameTemplate" inherits="TooltipBackdropTemplate" virtual="true"/>
+
+	<!-- Help boxes: dark panel with a gold edge and an arrow. -->
+	<Frame name="GlowBoxTemplate" virtual="true" frameStrata="DIALOG">
+		<Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+			<EdgeSize><AbsValue val="16"/></EdgeSize>
+			<TileSize><AbsValue val="16"/></TileSize>
+			<BackgroundInsets><AbsInset left="4" right="4" top="4" bottom="4"/></BackgroundInsets>
+		</Backdrop>
+		<Scripts>
+			<OnLoad>
+				self:SetBackdropColor(0, 0, 0, 0.85)
+				self:SetBackdropBorderColor(1, 0.82, 0, 1)
+			</OnLoad>
+		</Scripts>
+	</Frame>
+
+	<Frame name="GlowBoxArrowTemplate" virtual="true">
+		<Size><AbsDimension x="21" y="16"/></Size>
+		<Layers>
+			<Layer level="ARTWORK">
+				<Texture name="$parentArrow" parentKey="Arrow" file="Interface\Buttons\UI-ScrollBar-ScrollDownButton-Up" setAllPoints="true"/>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnLoad>
+				self.Glow = self.Arrow
+			</OnLoad>
+		</Scripts>
+	</Frame>
+
+	<!-- Drag bar: drags its parent. -->
+	<Frame name="PanelDragBarTemplate" virtual="true" enableMouse="true">
+		<Scripts>
+			<OnMouseDown>
+				local parent = self:GetParent()
+				if parent:IsMovable() then
+					parent:StartMoving()
+				end
+			</OnMouseDown>
+			<OnMouseUp>
+				self:GetParent():StopMovingOrSizing()
+			</OnMouseUp>
+		</Scripts>
+	</Frame>
+
+	<!-- Resize grip in a frame's corner. -->
+	<Button name="PanelResizeButtonTemplate" virtual="true">
+		<Size><AbsDimension x="16" y="16"/></Size>
+		<NormalTexture file="Interface\ChatFrame\UI-ChatIM-SizeGrabber-Up"/>
+		<HighlightTexture file="Interface\ChatFrame\UI-ChatIM-SizeGrabber-Highlight"/>
+		<PushedTexture file="Interface\ChatFrame\UI-ChatIM-SizeGrabber-Down"/>
+		<Scripts>
+			<OnMouseDown>
+				local parent = self:GetParent()
+				if parent:IsResizable() then
+					parent:StartSizing("BOTTOMRIGHT")
+				end
+			</OnMouseDown>
+			<OnMouseUp>
+				self:GetParent():StopMovingOrSizing()
+			</OnMouseUp>
+		</Scripts>
+	</Button>
+
+	<!-- Window with a dialog border, a portrait, a title and a close button. -->
+	<Frame name="PortraitFrameTemplate" virtual="true" toplevel="true" enableMouse="true">
+		<Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
+			<EdgeSize><AbsValue val="32"/></EdgeSize>
+			<TileSize><AbsValue val="32"/></TileSize>
+			<BackgroundInsets><AbsInset left="11" right="12" top="12" bottom="11"/></BackgroundInsets>
+		</Backdrop>
+		<Layers>
+			<Layer level="OVERLAY">
+				<Texture name="$parentPortrait" parentKey="portrait">
+					<Size><AbsDimension x="58" y="58"/></Size>
+					<Anchors>
+						<Anchor point="TOPLEFT"><Offset><AbsDimension x="-6" y="7"/></Offset></Anchor>
+					</Anchors>
+				</Texture>
+				<FontString name="$parentTitleText" parentKey="TitleText" inherits="GameFontNormal">
+					<Anchors>
+						<Anchor point="TOP"><Offset><AbsDimension x="0" y="-14"/></Offset></Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Button name="$parentCloseButton" parentKey="CloseButton" inherits="UIPanelCloseButton">
+				<Anchors>
+					<Anchor point="TOPRIGHT"><Offset><AbsDimension x="-3" y="-3"/></Offset></Anchor>
+				</Anchors>
+			</Button>
+		</Frames>
+		<Scripts>
+			<OnLoad>
+				self.PortraitContainer = { portrait = self.portrait }
+				self.SetTitle = self.SetTitle or function(frame, title) frame.TitleText:SetText(title) end
+				self.SetPortraitToAsset = self.SetPortraitToAsset or function(frame, texture) SetPortraitToTexture(frame.portrait, texture) end
+				self.SetPortraitTextureRaw = self.SetPortraitTextureRaw or function(frame, texture) frame.portrait:SetTexture(texture) end
+				self.SetPortraitShown = self.SetPortraitShown or function(frame, shown) if shown then frame.portrait:Show() else frame.portrait:Hide() end end
+			</OnLoad>
+		</Scripts>
+	</Frame>
+
+	<Frame name="ButtonFrameTemplate" inherits="PortraitFrameTemplate" virtual="true"/>
+	<Frame name="DefaultPanelTemplate" inherits="PortraitFrameTemplate" virtual="true">
+		<Scripts>
+			<OnLoad>
+				self.portrait:Hide()
+				self.PortraitContainer = { portrait = self.portrait }
+				self.SetTitle = self.SetTitle or function(frame, title) frame.TitleText:SetText(title) end
+			</OnLoad>
+		</Scripts>
+	</Frame>
+	<Frame name="BasicFrameTemplate" inherits="DefaultPanelTemplate" virtual="true"/>
+	<Frame name="BasicFrameTemplateWithInset" inherits="DefaultPanelTemplate" virtual="true"/>
+
+	<Frame name="InsetFrameTemplate" virtual="true">
+		<Backdrop bgFile="Interface\Tooltips\UI-Tooltip-Background" edgeFile="Interface\Tooltips\UI-Tooltip-Border" tile="true">
+			<EdgeSize><AbsValue val="12"/></EdgeSize>
+			<TileSize><AbsValue val="16"/></TileSize>
+			<BackgroundInsets><AbsInset left="3" right="3" top="3" bottom="3"/></BackgroundInsets>
+		</Backdrop>
+		<Scripts>
+			<OnLoad>
+				self:SetBackdropColor(0, 0, 0, 0.5)
+				self:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+			</OnLoad>
+		</Scripts>
+	</Frame>
+
+	<!-- A scroll frame with the 3.3.5 scroll bar. -->
+	<ScrollFrame name="ScrollFrameTemplate" inherits="UIPanelScrollFrameTemplate" virtual="true"/>
+</Ui>

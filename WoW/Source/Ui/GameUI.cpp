@@ -1803,7 +1803,7 @@ void CGGameUI::InitializeFrameXML() {
     }
 
     BugReportRegister();
-    ModernUI_Load(); // not in the original: modern addon layer, before any addon loads
+    ModernUI_Load(&status); // not in the original: modern addon layer, before any addon loads
     LoadAddOns(&status);
     FrameXML_RegisterLoadProgressCallback(nullptr, nullptr, 0);
     CGGameUI::Initialize();
