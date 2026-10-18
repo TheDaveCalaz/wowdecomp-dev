@@ -174,7 +174,148 @@ void CScriptRegion::LoadXML(XMLNode* node, CStatus* status) {
         }
     }
 
+    this->LoadXML_Modern(node, status);
     this->LoadXML_Animations(node, status);
+}
+
+// Not in the original client: modern XML attributes and elements.
+//   mixin="A, B" / secureMixin="A"  copy the named Lua tables' fields onto the object (before OnLoad)
+//   parentArray="Name"              append the object to parent.Name
+//   <KeyValues><KeyValue key="k" value="v" type="string|number|boolean|global|nil" keyType="string|number"/>
+//                                   set fields on the object
+// Templates are loaded through here too, so what a template declares applies to everything inheriting it.
+void CScriptRegion::LoadXML_Modern(XMLNode* node, CStatus* status) {
+    const char* mixin = node->GetAttributeByName("mixin");
+    const char* secureMixin = node->GetAttributeByName("secureMixin");
+    const char* parentArray = node->GetAttributeByName("parentArray");
+    XMLNode* keyValues = node->GetChildByName("KeyValues");
+
+    if (!(mixin && *mixin) && !(secureMixin && *secureMixin) && !(parentArray && *parentArray) && !keyValues) {
+        return;
+    }
+
+    lua_State* L = FrameScript_GetContext();
+
+    if (!this->m_luaRegistered) {
+        this->RegisterScriptObject(nullptr);
+    }
+
+    int32_t top = lua_gettop(L);
+    lua_rawgeti(L, LUA_REGISTRYINDEX, this->m_luaObjectRef);
+    int32_t self = lua_gettop(L);
+
+    for (const char* list : { mixin, secureMixin }) {
+        if (!list || !*list) {
+            continue;
+        }
+
+        char name[256];
+        const char* cursor = list;
+
+        do {
+            SStrTokenize(&cursor, name, sizeof(name), " ,", nullptr);
+
+            if (!name[0]) {
+                break;
+            }
+
+            lua_pushstring(L, name);
+            lua_rawget(L, LUA_GLOBALSINDEX);
+
+            if (lua_istable(L, -1)) {
+                lua_pushnil(L);
+
+                while (lua_next(L, -2)) {
+                    lua_pushvalue(L, -2);
+                    lua_insert(L, -2);
+                    lua_settable(L, self);
+                }
+            } else {
+                const char* objectName = this->GetName();
+                status->Add(STATUS_WARNING, "%s: Unknown mixin %s", objectName ? objectName : "<unnamed>", name);
+            }
+
+            lua_pop(L, 1);
+        } while (name[0]);
+    }
+
+    if (keyValues) {
+        for (XMLNode* child = keyValues->m_child; child; child = child->m_next) {
+            if (SStrCmpI(child->m_name.m_str, "KeyValue", STORM_MAX_STR)) {
+                continue;
+            }
+
+            const char* key = child->GetAttributeByName("key");
+            const char* value = child->GetAttributeByName("value");
+            const char* type = child->GetAttributeByName("type");
+            const char* keyType = child->GetAttributeByName("keyType");
+
+            if (!key || !*key) {
+                continue;
+            }
+
+            if (keyType && !SStrCmpI(keyType, "number", STORM_MAX_STR)) {
+                lua_pushnumber(L, SStrToFloat(key));
+            } else {
+                lua_pushstring(L, key);
+            }
+
+            if (!type || !*type || !SStrCmpI(type, "string", STORM_MAX_STR)) {
+                lua_pushstring(L, value ? value : "");
+            } else if (!SStrCmpI(type, "number", STORM_MAX_STR)) {
+                lua_pushnumber(L, value ? SStrToFloat(value) : 0.0);
+            } else if (!SStrCmpI(type, "boolean", STORM_MAX_STR)) {
+                lua_pushboolean(L, value && !SStrCmpI(value, "true", STORM_MAX_STR));
+            } else if (!SStrCmpI(type, "global", STORM_MAX_STR)) {
+                lua_pushstring(L, value ? value : "");
+                lua_rawget(L, LUA_GLOBALSINDEX);
+            } else {
+                lua_pushnil(L);
+            }
+
+            lua_settable(L, self);
+        }
+    }
+
+    if (parentArray && *parentArray) {
+        CScriptObject* parent = this->GetScriptObjectParent();
+
+        if (parent) {
+            if (!parent->m_luaRegistered) {
+                parent->RegisterScriptObject(nullptr);
+            }
+
+            lua_rawgeti(L, LUA_REGISTRYINDEX, parent->m_luaObjectRef);
+            int32_t parentTable = lua_gettop(L);
+            lua_pushstring(L, parentArray);
+            lua_rawget(L, parentTable);
+
+            if (!lua_istable(L, -1)) {
+                lua_pop(L, 1);
+                lua_newtable(L);
+                lua_pushstring(L, parentArray);
+                lua_pushvalue(L, -2);
+                lua_rawset(L, parentTable);
+            }
+
+            // Append unless this object is already in the array (a template and its user both naming it).
+            bool present = false;
+            int32_t count = static_cast<int32_t>(lua_objlen(L, -1));
+
+            for (int32_t i = 1; i <= count && !present; i++) {
+                lua_rawgeti(L, -1, i);
+                present = lua_rawequal(L, -1, self) != 0;
+                lua_pop(L, 1);
+            }
+
+            if (!present) {
+                lua_pushvalue(L, self);
+                lua_rawseti(L, -2, count + 1);
+            }
+        }
+    }
+
+    lua_settop(L, top);
 }
 
 // VERIFY: 23893fb6 auto

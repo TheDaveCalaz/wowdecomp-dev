@@ -149,3 +149,113 @@ define("CreateSecondsFormatter", function(...)
 	formatter:Init(...)
 	return formatter
 end)
+
+-- Secure-call helpers modern libraries (CallbackHandler, AceEvent) use.
+define("securecallfunction", function(func, ...)
+	return securecall(func, ...)
+end)
+
+define("secureexecuterange", function(tbl, func, ...)
+	for k, v in pairs(tbl) do
+		securecall(func, k, v, ...)
+	end
+end)
+
+define("FindInTableIf", function(tbl, pred)
+	for k, v in pairs(tbl) do
+		if pred(v) then
+			return k, v
+		end
+	end
+	return nil
+end)
+
+define("ContainsIf", function(tbl, pred)
+	for _, v in pairs(tbl) do
+		if pred(v) then
+			return true
+		end
+	end
+	return false
+end)
+
+define("GetClassColor", function(classFilename)
+	local color = RAID_CLASS_COLORS and RAID_CLASS_COLORS[classFilename]
+	if color then
+		return color.r, color.g, color.b, color.colorStr or color:GenerateHexColor()
+	end
+	return 1, 1, 1, "ffffffff"
+end)
+
+define("GetAutoCompleteRealms", function() return {} end)
+define("RAID_INFO_WORLD_BOSS", "World Boss")
+
+-- ItemUtil: the parts that make sense in this game.
+local ItemUtil = _G.ItemUtil or {}
+_G.ItemUtil = ItemUtil
+ItemUtil.GetItemDetails = ItemUtil.GetItemDetails or function(itemLink)
+	local name, _, quality, _, _, _, _, _, _, icon = GetItemInfo(itemLink)
+	return name, icon, quality
+end
+ItemUtil.IsStackable = ItemUtil.IsStackable or function(itemID) return (select(8, GetItemInfo(itemID)) or 1) > 1 end
+ItemUtil.GetOptionalReagentCount = ItemUtil.GetOptionalReagentCount or function() return 0 end
+ItemUtil.PickupBagItem = ItemUtil.PickupBagItem or function(location) PickupContainerItem(location:GetBagAndSlot()) end
+ItemUtil.TransformItemIDsToItems = ItemUtil.TransformItemIDsToItems or function(ids)
+	local items = {}
+	for i, id in ipairs(ids) do
+		items[i] = Item:CreateFromItemID(id)
+	end
+	return items
+end
+
+-- Azerite armour does not exist in this game: every item answers "not Azerite".
+if _G.C_AzeriteEmpoweredItem == nil then
+	_G.C_AzeriteEmpoweredItem = {
+		IsAzeriteEmpoweredItem = function() return false end,
+		IsAzeriteEmpoweredItemByID = function() return false end,
+		IsAzeritePreviewSourceDisplayable = function() return false end,
+		HasAnyUnselectedPowers = function() return false end,
+		GetAllTierInfo = function() return {} end,
+		GetAllTierInfoByItemID = function() return {} end,
+	}
+end
+if _G.C_AzeriteItem == nil then
+	_G.C_AzeriteItem = {
+		IsAzeriteItem = function() return false end,
+		IsAzeriteItemByID = function() return false end,
+		FindActiveAzeriteItem = function() return nil end,
+		HasActiveAzeriteItem = function() return false end,
+	}
+end
+
+-- Mixins of systems this client draws differently (model scenes, the world-map canvas). They exist so code
+-- that builds on them loads; the features themselves need the matching frames, which come later.
+define("ModelSceneActorMixin", {})
+define("ModelSceneMixin", {})
+define("MapCanvasDataProviderMixin", {
+	OnAdded = function(self, owningMap) self.owningMap = owningMap end,
+	OnRemoved = function(self) self.owningMap = nil end,
+	GetMap = function(self) return self.owningMap end,
+	RemoveAllData = function() end,
+	RefreshAllData = function() end,
+	OnShow = function() end,
+	OnHide = function() end,
+	OnMapChanged = function(self) self:RefreshAllData() end,
+	OnEvent = function() end,
+	SignalEvent = function() end,
+	RegisterEvent = function() end,
+	UnregisterEvent = function() end,
+})
+define("MapCanvasPinMixin", {
+	OnLoad = function() end,
+	OnAcquired = function() end,
+	OnReleased = function() end,
+	SetPosition = function(self, x, y) self.normalizedX, self.normalizedY = x, y end,
+	GetPosition = function(self) return self.normalizedX, self.normalizedY end,
+	UseFrameLevelType = function() end,
+	SetScalingLimits = function() end,
+	GetMap = function(self) return self.owningMap end,
+	ApplyCurrentScale = function() end,
+	ApplyCurrentAlpha = function() end,
+	SetIgnoreGlobalPinScale = function() end,
+})

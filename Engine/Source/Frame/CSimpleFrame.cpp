@@ -1198,6 +1198,7 @@ void CSimpleFrame::LoadXML_Scripts(XMLNode* node, CStatus* status) {
         }
 
         const char* function = child->GetAttributeByName("function");
+        const char* method = child->GetAttributeByName("method");
 
         if (function && *function) {
             lua_pushstring(L, function);
@@ -1210,6 +1211,18 @@ void CSimpleFrame::LoadXML_Scripts(XMLNode* node, CStatus* status) {
                 script->m_luaRef = 0;
             } else {
                 script->m_luaRef = ref;
+            }
+        } else if (method && *method && !(body && *body)) {
+            // Not in the original: method="Name" calls self:Name(...) with the script's arguments (modern XML),
+            // looked up when the script runs, so it finds methods a mixin adds.
+            char code[512];
+            SStrPrintf(code, sizeof(code), "return function(self, ...) local m = self[\"%s\"] if m then return m(self, ...) end end", method);
+
+            if (!luaL_loadbuffer(L, code, SStrLen(code), scriptName) && !lua_pcall(L, 0, 1, 0)) {
+                script->m_luaRef = luaL_ref(L, LUA_REGISTRYINDEX);
+            } else {
+                lua_pop(L, 1);
+                script->m_luaRef = 0;
             }
         } else if (child->m_userData) {
             lua_rawgeti(L, LUA_REGISTRYINDEX, static_cast<FrameScriptFunctionRef*>(child->m_userData)->m_function);

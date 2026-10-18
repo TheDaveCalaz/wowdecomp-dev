@@ -223,6 +223,11 @@ void CSimpleFont::LoadXML(XMLNode* node, CStatus* status) {
 
             if (heightNode) {
                 LoadXML_Value(heightNode, fontHeight, status);
+            } else if (const char* heightAttribute = node->GetAttributeByName("height")) {
+                // Not in the original: modern XML gives the height as an attribute, height="12".
+                // Converted from UI units the same way LoadXML_Value converts <AbsValue val="12"/>.
+                float ndc = SStrToFloat(heightAttribute) / (CoordinateGetAspectCompensation() * 1024.0f);
+                fontHeight = NDCToDDCWidth(ndc);
             }
 
             if (!(fontHeight > 0.0f)) {

@@ -188,7 +188,8 @@ static int32_t Script_UnitRace(lua_State* L) {
     if (rec && name) {
         lua_pushstring(L, name);
         lua_pushstring(L, rec->m_clientFileString);
-        return 2;
+        lua_pushnumber(L, rec->m_id); // not in the original: modern third return, the race ID
+        return 3;
     }
 
     lua_pushnil(L);
@@ -236,7 +237,8 @@ static int32_t Script_UnitClass(lua_State* L) {
     if (rec && name) {
         lua_pushstring(L, name);
         lua_pushstring(L, rec->m_filename);
-        return 2;
+        lua_pushnumber(L, rec->m_id); // not in the original: modern third return, the class ID
+        return 3;
     }
 
     lua_pushnil(L);
@@ -347,6 +349,31 @@ static int32_t Script_UnitClassification(lua_State* L) {
 
     lua_pushstring(L, s_unitClassificationTokens[0]);
     return 1;
+}
+
+// Not in the original client: modern UnitPosition(unit) -> posY, posX, posZ, instanceID: the unit's world
+// position (the first value is the server's X, as on modern clients) and the map it is on. Only units the
+// client has in view have a position; others return nothing.
+static int32_t Script_UnitPosition(lua_State* L) {
+    if (!lua_isstring(L, 1)) {
+        luaL_error(L, "Usage: UnitPosition(\"unit\")");
+        return 0;
+    }
+
+    WOWGUID guid = WOWGUID();
+    Script_GetGUIDFromToken(lua_tolstring(L, 1, nullptr), guid, false);
+    CGUnit_C* unit = static_cast<CGUnit_C*>(ClntObjMgrObjectPtr(guid, TYPEMASK_UNIT, __FILE__, __LINE__));
+
+    if (!unit) {
+        return 0;
+    }
+
+    C3Vector position = unit->GetPosition();
+    lua_pushnumber(L, position.x);
+    lua_pushnumber(L, position.y);
+    lua_pushnumber(L, position.z);
+    lua_pushnumber(L, static_cast<double>(ClntObjMgrGetMapID()));
+    return 4;
 }
 
 // VERIFY: dcb1f0ea manual
@@ -4494,6 +4521,7 @@ static FrameScript_Method s_UnitFunctions[] = {
     { "UnitXP", &Script_UnitXP },
     { "UnitXPMax", &Script_UnitXPMax },
     { "UnitHealth", &Script_UnitHealth },
+    { "UnitPosition", &Script_UnitPosition }, // not in the original
     { "UnitHealthMax", &Script_UnitHealthMax },
     { "UnitMana", &Script_UnitPower },
     { "UnitManaMax", &Script_UnitPowerMax },

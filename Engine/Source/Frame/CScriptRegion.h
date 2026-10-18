@@ -45,6 +45,7 @@ class CScriptRegion : public CScriptObject, public CLayoutFrame {
     virtual void AddAnimScale(FRAMEPOINT origin, const C2Vector& offset, const C2Vector& scale);
     virtual void AddAnimAlpha(int16_t alpha);
     virtual void LoadXML(XMLNode* node, CStatus* status);
+    void LoadXML_Modern(XMLNode* node, CStatus* status); // not in the original
     virtual CLayoutFrame* GetLayoutParent();
     virtual CLayoutFrame* GetLayoutFrameByName(const char* name);
 
