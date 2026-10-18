@@ -1,0 +1,800 @@
+-- ModernUI: built into the client (not in the original 3.3.5a).
+-- Widget methods modern addons call, added to this client's widget types, plus modern frame types,
+-- animation types and game events mapped onto their 3.3.5 equivalents.
+-- Methods the client already has are never replaced.
+
+local _G = _G
+local type, select, pairs, ipairs, pcall, getmetatable, setmetatable, rawget = type, select, pairs, ipairs, pcall, getmetatable, setmetatable, rawget
+
+local CreateFrame_335 = CreateFrame
+
+-- Collect the method table of every widget type ------------------------------------------------
+
+local methodTables = {}   -- kind -> method table
+local seen = {}
+
+local function remember(kind, object)
+	local mt = object and getmetatable(object)
+	local index = mt and mt.__index
+	if type(index) == "table" and not seen[index] then
+		seen[index] = kind
+		methodTables[kind] = index
+	end
+end
+
+local host = CreateFrame_335("Frame")
+host:Hide()
+
+local frameKinds = {
+	"Frame", "Button", "CheckButton", "EditBox", "ScrollFrame", "Slider", "StatusBar", "Cooldown",
+	"ColorSelect", "GameTooltip", "MessageFrame", "ScrollingMessageFrame", "SimpleHTML", "Model",
+	"PlayerModel", "DressUpModel", "TabardModel", "MovieFrame", "QuestPOIFrame",
+}
+for _, kind in ipairs(frameKinds) do
+	local ok, object = pcall(CreateFrame_335, kind, nil, host)
+	if ok and object then
+		if object.Hide then object:Hide() end
+		remember(kind, object)
+	end
+end
+if _G.Minimap then remember("Minimap", Minimap) end
+if _G.WorldFrame then remember("WorldFrame", WorldFrame) end
+
+remember("Texture", host:CreateTexture())
+remember("FontString", host:CreateFontString())
+
+local group = host:CreateAnimationGroup()
+remember("AnimationGroup", group)
+local animationKinds = { "Animation", "Alpha", "Scale", "Translation", "Rotation", "Path" }
+for _, kind in ipairs(animationKinds) do
+	local ok, anim = pcall(group.CreateAnimation, group, kind)
+	if ok and anim then
+		remember(kind, anim)
+	end
+end
+
+local frameTypes, regionTypes, animTypes = {}, {}, {}
+for kind, index in pairs(methodTables) do
+	if kind == "Texture" or kind == "FontString" then
+		regionTypes[#regionTypes + 1] = index
+	elseif kind == "AnimationGroup" or kind == "Animation" or kind == "Alpha" or kind == "Scale" or kind == "Translation" or kind == "Rotation" or kind == "Path" then
+		animTypes[#animTypes + 1] = index
+	else
+		frameTypes[#frameTypes + 1] = index
+	end
+end
+
+local function add(list, name, fn)
+	for _, index in ipairs(list) do
+		if rawget(index, name) == nil then
+			index[name] = fn
+		end
+	end
+end
+
+local function addTo(kind, name, fn)
+	local index = methodTables[kind]
+	if index and rawget(index, name) == nil then
+		index[name] = fn
+	end
+end
+
+local function noop() end
+local function falseFn() return false end
+local function nilFn() return nil end
+
+local allRegions = {}
+for _, t in ipairs(frameTypes) do allRegions[#allRegions + 1] = t end
+for _, t in ipairs(regionTypes) do allRegions[#allRegions + 1] = t end
+
+-- Per-object state kept outside the object.
+local state = setmetatable({}, { __mode = "k" })
+local function stateOf(object)
+	local s = state[object]
+	if not s then
+		s = {}
+		state[object] = s
+	end
+	return s
+end
+
+-- Every region and frame -----------------------------------------------------------------------
+
+add(allRegions, "SetShown", function(self, shown)
+	if shown then self:Show() else self:Hide() end
+end)
+add(allRegions, "SetSize", function(self, width, height)
+	self:SetWidth(width)
+	self:SetHeight(height or width)
+end)
+add(allRegions, "GetSize", function(self) return self:GetWidth(), self:GetHeight() end)
+add(allRegions, "SetIgnoreParentAlpha", function(self, ignore) stateOf(self).ignoreParentAlpha = ignore and true or false end)
+add(allRegions, "IsIgnoringParentAlpha", function(self) return stateOf(self).ignoreParentAlpha == true end)
+add(allRegions, "SetIgnoreParentScale", function(self, ignore) stateOf(self).ignoreParentScale = ignore and true or false end)
+add(allRegions, "IsIgnoringParentScale", function(self) return stateOf(self).ignoreParentScale == true end)
+add(allRegions, "SetSnapToPixelGrid", noop)
+add(allRegions, "IsSnappingToPixelGrid", falseFn)
+add(allRegions, "SetTexelSnappingBias", noop)
+add(allRegions, "GetTexelSnappingBias", function() return 0 end)
+add(allRegions, "IsAnchoringRestricted", falseFn)
+add(allRegions, "IsForbidden", falseFn)
+add(allRegions, "SetForbidden", noop)
+add(allRegions, "IsRectValid", function(self) return self:GetLeft() ~= nil end)
+add(allRegions, "GetScaledRect", function(self)
+	local left, bottom, width, height = self:GetRect()
+	if not left then
+		return nil
+	end
+	local scale = self:GetEffectiveScale()
+	return left * scale, bottom * scale, width * scale, height * scale
+end)
+add(allRegions, "GetDebugName", function(self) return self:GetName() or tostring(self) end)
+add(allRegions, "GetPointByName", function(self, name)
+	for i = 1, self:GetNumPoints() do
+		local point, relativeTo, relativePoint, x, y = self:GetPoint(i)
+		if point == name then
+			return point, relativeTo, relativePoint, x, y
+		end
+	end
+end)
+add(allRegions, "ClearPoint", function(self, name)
+	local keep = {}
+	for i = 1, self:GetNumPoints() do
+		local point, relativeTo, relativePoint, x, y = self:GetPoint(i)
+		if point ~= name then
+			keep[#keep + 1] = { point, relativeTo, relativePoint, x, y }
+		end
+	end
+	self:ClearAllPoints()
+	for _, p in ipairs(keep) do
+		self:SetPoint(p[1], p[2], p[3], p[4], p[5])
+	end
+end)
+add(allRegions, "AdjustPointsOffset", function(self, dx, dy)
+	local points = {}
+	for i = 1, self:GetNumPoints() do
+		points[i] = { self:GetPoint(i) }
+	end
+	self:ClearAllPoints()
+	for _, p in ipairs(points) do
+		self:SetPoint(p[1], p[2], p[3], (p[4] or 0) + dx, (p[5] or 0) + dy)
+	end
+end)
+add(allRegions, "ClearPointsOffset", function(self)
+	local points = {}
+	for i = 1, self:GetNumPoints() do
+		points[i] = { self:GetPoint(i) }
+	end
+	self:ClearAllPoints()
+	for _, p in ipairs(points) do
+		self:SetPoint(p[1], p[2], p[3], 0, 0)
+	end
+end)
+add(allRegions, "SetPassThroughButtons", noop)
+add(allRegions, "SetMouseClickEnabled", function(self, enabled)
+	if self.EnableMouse and enabled then self:EnableMouse(true) end
+end)
+add(allRegions, "SetMouseMotionEnabled", function(self, enabled)
+	if self.EnableMouse and enabled then self:EnableMouse(true) end
+end)
+add(allRegions, "IsMouseClickEnabled", function(self) return self.IsMouseEnabled and self:IsMouseEnabled() and true or false end)
+add(allRegions, "IsMouseMotionEnabled", function(self) return self.IsMouseEnabled and self:IsMouseEnabled() and true or false end)
+add(allRegions, "IsMouseMotionFocus", function(self) return GetMouseFocus() == self end)
+add(allRegions, "SetCollapsesLayout", noop)
+add(allRegions, "SetDrawLayerEnabled", noop)
+
+-- Frames ------------------------------------------------------------------------------------------
+
+add(frameTypes, "SetFixedFrameStrata", function(self, fixed) stateOf(self).fixedStrata = fixed and true or false end)
+add(frameTypes, "HasFixedFrameStrata", function(self) return stateOf(self).fixedStrata == true end)
+add(frameTypes, "SetFixedFrameLevel", function(self, fixed) stateOf(self).fixedLevel = fixed and true or false end)
+add(frameTypes, "HasFixedFrameLevel", function(self) return stateOf(self).fixedLevel == true end)
+add(frameTypes, "SetClipsChildren", function(self, clips) stateOf(self).clipsChildren = clips and true or false end)
+add(frameTypes, "DoesClipChildren", function(self) return stateOf(self).clipsChildren == true end)
+add(frameTypes, "SetFlattensRenderLayers", noop)
+add(frameTypes, "GetFlattensRenderLayers", falseFn)
+add(frameTypes, "SetIsFrameBuffer", noop)
+add(frameTypes, "SetUsingParentLevel", noop)
+add(frameTypes, "IsUsingParentLevel", falseFn)
+add(frameTypes, "SetPropagateKeyboardInput", function(self, propagate) stateOf(self).propagateKeyboard = propagate end)
+add(frameTypes, "GetPropagateKeyboardInput", function(self) return stateOf(self).propagateKeyboard and true or false end)
+add(frameTypes, "SetPropagateMouseClicks", noop)
+add(frameTypes, "SetPropagateMouseMotion", noop)
+add(frameTypes, "EnableMouseMotion", function(self, enabled)
+	if enabled then self:EnableMouse(true) end
+end)
+add(frameTypes, "SetResizeBounds", function(self, minWidth, minHeight, maxWidth, maxHeight)
+	if self.SetMinResize then self:SetMinResize(minWidth or 0, minHeight or 0) end
+	if self.SetMaxResize and maxWidth and maxHeight then self:SetMaxResize(maxWidth, maxHeight) end
+end)
+add(frameTypes, "GetResizeBounds", function(self)
+	local minW, minH = 0, 0
+	local maxW, maxH = 0, 0
+	if self.GetMinResize then minW, minH = self:GetMinResize() end
+	if self.GetMaxResize then maxW, maxH = self:GetMaxResize() end
+	return minW, minH, maxW, maxH
+end)
+add(frameTypes, "SetEnabled", function(self, enabled)
+	if self.Enable then
+		if enabled then self:Enable() else self:Disable() end
+	end
+end)
+add(frameTypes, "CanChangeAttribute", function() return not InCombatLockdown() end)
+add(frameTypes, "SetAttributeNoHandler", function(self, name, value) self:SetAttribute(name, value) end)
+add(frameTypes, "SetHighlightLocked", function(self, locked)
+	if locked then
+		if self.LockHighlight then self:LockHighlight() end
+	elseif self.UnlockHighlight then
+		self:UnlockHighlight()
+	end
+end)
+add(frameTypes, "GetWindow", nilFn)
+add(frameTypes, "SetWindow", noop)
+add(frameTypes, "CreateMaskTexture", function(self, name, layer)
+	local texture = self:CreateTexture(name, layer)
+	texture:Hide()
+	return texture
+end)
+add(frameTypes, "CreateLine", function(self, name, layer, template, subLevel)
+	return self:CreateTexture(name, layer, template)
+end)
+add(frameTypes, "GetRaisedFrameLevel", function(self) return self:GetFrameLevel() end)
+add(frameTypes, "Raise", function(self) self:SetFrameLevel(self:GetFrameLevel() + 1) end)
+add(frameTypes, "Lower", function(self) self:SetFrameLevel(math.max(0, self:GetFrameLevel() - 1)) end)
+
+-- Textures ----------------------------------------------------------------------------------------
+
+addTo("Texture", "SetColorTexture", function(self, r, g, b, a)
+	self:SetTexture(r, g, b, a or 1)
+end)
+-- This client has no atlas data, so an atlas leaves the texture empty instead of raising an error.
+addTo("Texture", "SetAtlas", function(self, atlas, useAtlasSize)
+	stateOf(self).atlas = atlas
+	return false
+end)
+addTo("Texture", "GetAtlas", function(self) return stateOf(self).atlas end)
+addTo("Texture", "SetMask", noop)
+addTo("Texture", "AddMaskTexture", noop)
+addTo("Texture", "RemoveMaskTexture", noop)
+addTo("Texture", "GetNumMaskTextures", function() return 0 end)
+addTo("Texture", "GetMaskTexture", nilFn)
+addTo("Texture", "SetVertexOffset", noop)
+addTo("Texture", "SetTextureSliceMargins", noop)
+addTo("Texture", "SetTextureSliceMode", noop)
+addTo("Texture", "ClearTextureSlice", noop)
+addTo("Texture", "SetDesaturation", function(self, amount) self:SetDesaturated(amount and amount > 0) end)
+addTo("Texture", "GetDesaturation", function(self) return self:IsDesaturated() and 1 or 0 end)
+addTo("Texture", "SetBlockingLoadsRequested", noop)
+addTo("Texture", "IsBlockingLoadRequested", falseFn)
+addTo("Texture", "SetStartPoint", noop)
+addTo("Texture", "SetEndPoint", noop)
+addTo("Texture", "SetThickness", noop)
+
+-- Font strings ------------------------------------------------------------------------------------
+
+addTo("FontString", "SetMaxLines", noop)
+addTo("FontString", "GetMaxLines", function() return 0 end)
+addTo("FontString", "SetTextScale", noop)
+addTo("FontString", "GetTextScale", function() return 1 end)
+addTo("FontString", "SetRotation", noop)
+addTo("FontString", "GetRotation", function() return 0 end)
+addTo("FontString", "GetUnboundedStringWidth", function(self) return self:GetStringWidth() end)
+addTo("FontString", "GetLineHeight", function(self)
+	local _, height = self:GetFont()
+	return height or 12
+end)
+addTo("FontString", "IsTruncated", function(self) return self:GetStringWidth() > self:GetWidth() + 0.5 end)
+addTo("FontString", "GetNumLines", function(self)
+	local _, height = self:GetFont()
+	return math.max(1, math.floor(self:GetStringHeight() / (height or 12) + 0.5))
+end)
+addTo("FontString", "SetWordWrap", noop)
+addTo("FontString", "CanWordWrap", function() return true end)
+addTo("FontString", "CanNonSpaceWrap", falseFn)
+addTo("FontString", "SetFontObjectsToTry", function(self, font) if font then self:SetFontObject(font) end end)
+addTo("FontString", "SetResizeToFitBounds", noop)
+addTo("FontString", "SetAutoFit", noop)
+
+-- Status bars, cooldowns, sliders, buttons, edit boxes, models ------------------------------------
+
+addTo("StatusBar", "SetFillStyle", noop)
+addTo("StatusBar", "SetReverseFill", noop)
+addTo("StatusBar", "GetReverseFill", falseFn)
+addTo("StatusBar", "SetColorFill", function(self, r, g, b, a) self:SetStatusBarColor(r, g, b, a) end)
+addTo("StatusBar", "SetStatusBarDesaturated", noop)
+addTo("StatusBar", "SetStatusBarAtlas", noop)
+addTo("StatusBar", "SetTimerDuration", noop)
+
+for _, name in ipairs({
+	"SetSwipeColor", "SetDrawSwipe", "SetDrawBling", "SetHideCountdownNumbers", "SetCountdownFont",
+	"SetSwipeTexture", "SetEdgeTexture", "SetBlingTexture", "SetUseCircularEdge", "SetEdgeScale",
+	"SetUseAuraDisplayTime", "SetMinimumCountdownDuration", "SetCountdownAbbrevThreshold", "SetTexCoordRange",
+	"SetRotation", "SetCountdownColor",
+}) do
+	addTo("Cooldown", name, noop)
+end
+addTo("Cooldown", "Clear", function(self) self:SetCooldown(0, 0) end)
+addTo("Cooldown", "SetCooldownDuration", function(self, duration) self:SetCooldown(GetTime(), duration) end)
+addTo("Cooldown", "SetCooldownUNIX", function(self, start, duration) self:SetCooldown(GetTime() - (time() - start), duration) end)
+addTo("Cooldown", "GetCooldownTimes", function(self)
+	local s = stateOf(self)
+	return (s.start or 0) * 1000, (s.duration or 0) * 1000
+end)
+addTo("Cooldown", "GetCooldownDuration", function(self) return (stateOf(self).duration or 0) * 1000 end)
+addTo("Cooldown", "IsPaused", falseFn)
+addTo("Cooldown", "Pause", noop)
+addTo("Cooldown", "Resume", noop)
+addTo("Cooldown", "GetDrawSwipe", function() return true end)
+addTo("Cooldown", "GetDrawEdge", falseFn)
+addTo("Cooldown", "GetDrawBling", falseFn)
+addTo("Cooldown", "GetReverse", falseFn)
+do
+	local index = methodTables.Cooldown
+	local SetCooldown = index and index.SetCooldown
+	if SetCooldown then
+		index.SetCooldown = function(self, start, duration, modRate)
+			local s = stateOf(self)
+			s.start, s.duration = start, duration
+			return SetCooldown(self, start, duration)
+		end
+	end
+end
+
+addTo("Slider", "SetObeyStepOnDrag", noop)
+addTo("Slider", "GetObeyStepOnDrag", falseFn)
+addTo("Slider", "SetStepsPerPage", noop)
+addTo("Slider", "GetStepsPerPage", function() return 1 end)
+
+for _, kind in ipairs({ "Button", "CheckButton" }) do
+	addTo(kind, "SetNormalAtlas", noop)
+	addTo(kind, "SetPushedAtlas", noop)
+	addTo(kind, "SetDisabledAtlas", noop)
+	addTo(kind, "SetHighlightAtlas", noop)
+	addTo(kind, "SetCheckedAtlas", noop)
+	addTo(kind, "ClearNormalTexture", function(self) local t = self:GetNormalTexture() if t then t:SetTexture(nil) end end)
+	addTo(kind, "ClearPushedTexture", function(self) local t = self:GetPushedTexture() if t then t:SetTexture(nil) end end)
+	addTo(kind, "ClearDisabledTexture", function(self) local t = self:GetDisabledTexture() if t then t:SetTexture(nil) end end)
+	addTo(kind, "ClearHighlightTexture", function(self) local t = self:GetHighlightTexture() if t then t:SetTexture(nil) end end)
+	addTo(kind, "RegisterForMouse", noop)
+end
+
+addTo("EditBox", "SetCountInvisibleLetters", noop)
+addTo("EditBox", "SetVisibleTextByteLimit", noop)
+addTo("EditBox", "GetDisplayText", function(self) return self:GetText() end)
+addTo("EditBox", "SetEnabled", function(self, enabled) self:EnableMouse(enabled) self:EnableKeyboard(enabled) end)
+addTo("EditBox", "IsEnabled", function(self) return self:IsMouseEnabled() and true or false end)
+addTo("EditBox", "SetSecureText", function(self, text) self:SetText(text) end)
+
+for _, kind in ipairs({ "Model", "PlayerModel", "DressUpModel", "TabardModel" }) do
+	addTo(kind, "SetKeepModelOnHide", noop)
+	addTo(kind, "MakeCurrentCameraCustom", noop)
+	addTo(kind, "SetModelAlpha", function(self, alpha) self:SetAlpha(alpha) end)
+	addTo(kind, "ClearTransform", noop)
+	addTo(kind, "SetTransform", noop)
+	addTo(kind, "SetAnimation", function(self, animation) if self.SetSequence then self:SetSequence(animation) end end)
+	addTo(kind, "SetPortraitZoom", noop)
+	addTo(kind, "SetCamDistanceScale", noop)
+	addTo(kind, "SetViewTranslation", noop)
+	addTo(kind, "SetDesaturation", noop)
+	addTo(kind, "SetPaused", noop)
+	addTo(kind, "FreezeAnimation", noop)
+	addTo(kind, "SetItemAppearance", noop)
+	addTo(kind, "SetDisplayInfo", function(self, displayID) if self.SetCreature then self:SetCreature(displayID) end end)
+	addTo(kind, "SetUseTransmogSkin", noop)
+	addTo(kind, "SetUseTransmogChoices", noop)
+	addTo(kind, "SetObeyHideInTransmogFlag", noop)
+	addTo(kind, "SetSheathed", noop)
+	addTo(kind, "SetDoBlend", noop)
+	addTo(kind, "SetAutoDress", noop)
+	addTo(kind, "SetBarberShopAlternateForm", noop)
+	addTo(kind, "SetAnimationBlendOperation", noop)
+	addTo(kind, "SetParticlesEnabled", noop)
+	addTo(kind, "GetDisplayInfo", function() return 0 end)
+	addTo(kind, "HasAnimation", function() return true end)
+	addTo(kind, "IsUsingModelCenterToTransform", falseFn)
+	addTo(kind, "UseModelCenterToTransform", noop)
+end
+
+addTo("GameTooltip", "SetPadding", noop)
+addTo("GameTooltip", "SetAllowShowWithNoLines", noop)
+addTo("GameTooltip", "IsTooltipType", falseFn)
+addTo("GameTooltip", "GetPrimaryTooltipData", nilFn)
+addTo("GameTooltip", "GetTooltipData", nilFn)
+addTo("GameTooltip", "ProcessInfo", falseFn)
+addTo("GameTooltip", "SetItemByID", function(self, itemID) self:SetHyperlink("item:" .. itemID) end)
+addTo("GameTooltip", "SetSpellByID", function(self, spellID) self:SetHyperlink("spell:" .. spellID) end)
+addTo("GameTooltip", "SetUnitBuffByAuraInstanceID", noop)
+addTo("GameTooltip", "SetUnitDebuffByAuraInstanceID", noop)
+addTo("GameTooltip", "SetUnitAuraByAuraInstanceID", noop)
+addTo("GameTooltip", "SetCurrencyByID", noop)
+
+-- Animations -----------------------------------------------------------------------------------
+
+addTo("AnimationGroup", "SetToFinalAlpha", noop)
+addTo("AnimationGroup", "IsSetToFinalAlpha", falseFn)
+addTo("AnimationGroup", "SetPlaying", function(self, playing) if playing then self:Play() else self:Stop() end end)
+addTo("AnimationGroup", "Restart", function(self) self:Stop() self:Play() end)
+addTo("AnimationGroup", "PlaySynced", function(self) self:Play() end)
+addTo("AnimationGroup", "RemoveAnimations", noop)
+addTo("AnimationGroup", "GetAnimationSpeedMultiplier", function() return 1 end)
+addTo("AnimationGroup", "SetAnimationSpeedMultiplier", noop)
+
+-- Animation types added after 3.3.5 are created as plain animations that do nothing visible.
+do
+	local index = methodTables.AnimationGroup
+	local CreateAnimation = index and index.CreateAnimation
+	local known = { Animation = true, Alpha = true, Scale = true, Translation = true, Rotation = true, Path = true }
+	if CreateAnimation then
+		index.CreateAnimation = function(self, kind, name, inherits)
+			if kind and not known[kind] then
+				kind = "Animation"
+			end
+			return CreateAnimation(self, kind, name, inherits)
+		end
+	end
+end
+
+-- Alpha animations: modern code gives start and end alpha; 3.3.5 takes the change between them.
+do
+	local function applyAlpha(self)
+		local s = stateOf(self)
+		self:SetChange((s.toAlpha or 1) - (s.fromAlpha or 0))
+	end
+	addTo("Alpha", "SetFromAlpha", function(self, alpha) stateOf(self).fromAlpha = alpha applyAlpha(self) end)
+	addTo("Alpha", "SetToAlpha", function(self, alpha) stateOf(self).toAlpha = alpha applyAlpha(self) end)
+	addTo("Alpha", "GetFromAlpha", function(self) return stateOf(self).fromAlpha or 0 end)
+	addTo("Alpha", "GetToAlpha", function(self) return stateOf(self).toAlpha or 1 end)
+
+	local function applyScale(self)
+		local s = stateOf(self)
+		local fx, fy = s.fromX or 1, s.fromY or 1
+		local tx, ty = s.toX or 1, s.toY or 1
+		self:SetScale(fx ~= 0 and tx / fx or tx, fy ~= 0 and ty / fy or ty)
+	end
+	local function fromScale(self, x, y) local s = stateOf(self) s.fromX, s.fromY = x, y or x applyScale(self) end
+	local function toScale(self, x, y) local s = stateOf(self) s.toX, s.toY = x, y or x applyScale(self) end
+	addTo("Scale", "SetScaleFrom", fromScale)
+	addTo("Scale", "SetScaleTo", toScale)
+	addTo("Scale", "SetFromScale", fromScale)
+	addTo("Scale", "SetToScale", toScale)
+end
+
+add(animTypes, "SetTarget", noop)
+add(animTypes, "SetTargetKey", noop)
+add(animTypes, "SetChildKey", noop)
+add(animTypes, "SetTargetName", noop)
+add(animTypes, "SetTargetParent", noop)
+add(animTypes, "GetTarget", function(self) return self:GetRegionParent() end)
+add(animTypes, "SetFlipBookRows", noop)
+add(animTypes, "SetFlipBookColumns", noop)
+add(animTypes, "SetFlipBookFrames", noop)
+add(animTypes, "SetFlipBookFrameWidth", noop)
+add(animTypes, "SetFlipBookFrameHeight", noop)
+add(animTypes, "SetStartColor", noop)
+add(animTypes, "SetEndColor", noop)
+add(animTypes, "SetScaleFrom", noop)
+add(animTypes, "SetScaleTo", noop)
+add(animTypes, "SetFromScale", noop)
+add(animTypes, "SetToScale", noop)
+add(animTypes, "SetFromAlpha", noop)
+add(animTypes, "SetToAlpha", noop)
+
+-- Modern frame types created as their nearest 3.3.5 type ------------------------------------------
+
+local frameTypeAliases = {
+	EventFrame = "Frame", DropdownButton = "Button", DropDownToggleButton = "Button",
+	ModelScene = "Frame", CinematicModel = "PlayerModel", ContainedAlertFrame = "Button",
+	ItemButton = "Button", UnitPositionFrame = "Frame", OffScreenFrame = "Frame", FogOfWarFrame = "Frame",
+	ScenarioPOIFrame = "Frame", Checkout = "Frame", Browser = "Frame", ArchaeologyDigSiteFrame = "Frame",
+	ScrollBox = "Frame", ScrollBar = "Frame", MinimalScrollBar = "Frame",
+}
+
+_G.CreateFrame = function(frameType, name, parent, template, id)
+	local alias = type(frameType) == "string" and frameTypeAliases[frameType]
+	local frame = CreateFrame_335(alias or frameType, name, parent, template, id)
+	if alias == "Frame" and frameType == "EventFrame" and frame then
+		Mixin(frame, CallbackRegistryMixin)
+		frame:OnLoad()
+		frame:SetUndefinedEventsAllowed(true)
+		frame:HookScript("OnShow", function(self) self:TriggerEvent("OnShow") end)
+		frame:HookScript("OnHide", function(self) self:TriggerEvent("OnHide") end)
+	end
+	return frame
+end
+
+-- Game events ---------------------------------------------------------------------------------------
+-- Modern event names are mapped onto the 3.3.5 events that carry the same news, and the handler
+-- sees the modern name and arguments. Events this client never sends are accepted quietly.
+
+local powerTokens = {
+	UNIT_MANA = "MANA", UNIT_RAGE = "RAGE", UNIT_ENERGY = "ENERGY", UNIT_FOCUS = "FOCUS",
+	UNIT_RUNIC_POWER = "RUNIC_POWER", UNIT_HAPPINESS = "HAPPINESS",
+}
+local maxPowerTokens = {
+	UNIT_MAXMANA = "MANA", UNIT_MAXRAGE = "RAGE", UNIT_MAXENERGY = "ENERGY", UNIT_MAXFOCUS = "FOCUS",
+	UNIT_MAXRUNIC_POWER = "RUNIC_POWER", UNIT_MAXHAPPINESS = "HAPPINESS",
+}
+local interactionShow = {
+	GOSSIP_SHOW = 3, QUEST_GREETING = 4, QUEST_DETAIL = 4, QUEST_PROGRESS = 4, QUEST_COMPLETE = 4,
+	MERCHANT_SHOW = 5, TAXIMAP_OPENED = 6, TRAINER_SHOW = 7, BANKFRAME_OPENED = 8, GUILDBANKFRAME_OPENED = 10,
+	MAIL_SHOW = 17, AUCTION_HOUSE_SHOW = 21,
+}
+local interactionHide = {
+	GOSSIP_CLOSED = 3, QUEST_FINISHED = 4, MERCHANT_CLOSED = 5, TAXIMAP_CLOSED = 6, TRAINER_CLOSED = 7,
+	BANKFRAME_CLOSED = 8, GUILDBANKFRAME_CLOSED = 10, MAIL_CLOSED = 17, AUCTION_HOUSE_CLOSED = 21,
+}
+
+-- modern event -> list of { 3.3.5 event, translate(args...) -> modern args }
+local eventMap = {}
+local function map(modern, old, translate)
+	eventMap[modern] = eventMap[modern] or {}
+	table.insert(eventMap[modern], { old, translate })
+end
+
+for old, token in pairs(powerTokens) do
+	map("UNIT_POWER_UPDATE", old, function(unit) return unit, token end)
+	map("UNIT_POWER_FREQUENT", old, function(unit) return unit, token end)
+end
+for old, token in pairs(maxPowerTokens) do
+	map("UNIT_MAXPOWER", old, function(unit) return unit, token end)
+end
+map("GROUP_ROSTER_UPDATE", "PARTY_MEMBERS_CHANGED")
+map("GROUP_ROSTER_UPDATE", "RAID_ROSTER_UPDATE")
+map("GROUP_JOINED", "PARTY_MEMBERS_CHANGED")
+map("PLAYER_SPECIALIZATION_CHANGED", "ACTIVE_TALENT_GROUP_CHANGED", function() return "player" end)
+map("PLAYER_SPECIALIZATION_CHANGED", "PLAYER_TALENT_UPDATE", function() return "player" end)
+map("ACTIVE_PLAYER_SPECIALIZATION_CHANGED", "ACTIVE_TALENT_GROUP_CHANGED", function() return end)
+map("TRAIT_CONFIG_UPDATED", "PLAYER_TALENT_UPDATE", function() return 0 end)
+map("BAG_UPDATE_DELAYED", "BAG_UPDATE", function() return end)
+map("PLAYER_LEVEL_CHANGED", "PLAYER_LEVEL_UP", function(level) return level - 1, level end)
+map("PLAYER_MOUNT_DISPLAY_CHANGED", "COMPANION_UPDATE", function() return end)
+map("LOADING_SCREEN_DISABLED", "PLAYER_ENTERING_WORLD", function() return end)
+for old, kind in pairs(interactionShow) do
+	map("PLAYER_INTERACTION_MANAGER_FRAME_SHOW", old, function() return kind end)
+end
+for old, kind in pairs(interactionHide) do
+	map("PLAYER_INTERACTION_MANAGER_FRAME_HIDE", old, function() return kind end)
+end
+
+-- Frames that use mapped or unit-filtered events get their OnEvent handler wrapped.
+local wrapped = setmetatable({}, { __mode = "k" })
+
+local function deliver(frame, info, event, ...)
+	local handler = info.handler
+	if not handler then
+		return
+	end
+	local translations = info.byOldEvent[event]
+	if translations then
+		for modern, translate in pairs(translations) do
+			local filter = info.unitFilter[modern]
+			if translate then
+				if not filter or filter[(translate(...))] then
+					handler(frame, modern, translate(...))
+				end
+			elseif not filter or filter[(...)] then
+				handler(frame, modern, ...)
+			end
+		end
+		if not info.direct[event] then
+			return
+		end
+	end
+	local filter = info.unitFilter[event]
+	if filter and not filter[(...)] then
+		return
+	end
+	return handler(frame, event, ...)
+end
+
+local function wrap(frame)
+	local info = wrapped[frame]
+	if info then
+		return info
+	end
+	local index = getmetatable(frame).__index
+	local SetScript, GetScript = index.SetScript, index.GetScript
+	info = { byOldEvent = {}, unitFilter = {}, direct = {}, handler = GetScript(frame, "OnEvent") }
+	wrapped[frame] = info
+	local function onEvent(self, event, ...)
+		return deliver(self, info, event, ...)
+	end
+	SetScript(frame, "OnEvent", onEvent)
+	frame.SetScript = function(self, script, func)
+		if script == "OnEvent" then
+			info.handler = func
+			return SetScript(self, script, func and onEvent or nil)
+		end
+		return SetScript(self, script, func)
+	end
+	frame.GetScript = function(self, script)
+		if script == "OnEvent" then
+			return info.handler
+		end
+		return GetScript(self, script)
+	end
+	return info
+end
+
+for _, index in ipairs(frameTypes) do
+	local RegisterEvent, UnregisterEvent, UnregisterAllEvents = rawget(index, "RegisterEvent"), rawget(index, "UnregisterEvent"), rawget(index, "UnregisterAllEvents")
+	if RegisterEvent then
+		local function register(self, event)
+			local ok, known = pcall(RegisterEvent, self, event)
+			known = ok and known ~= false
+			if known then
+				local info = wrapped[self]
+				if info then
+					info.direct[event] = true
+				end
+				return true
+			end
+			local mapped = eventMap[event]
+			if mapped then
+				local info = wrap(self)
+				for _, entry in ipairs(mapped) do
+					local old, translate = entry[1], entry[2]
+					info.byOldEvent[old] = info.byOldEvent[old] or {}
+					info.byOldEvent[old][event] = translate or false
+					pcall(RegisterEvent, self, old)
+				end
+				return true
+			end
+			return false
+		end
+
+		index.RegisterEvent = function(self, event)
+			local info = wrapped[self]
+			if info then
+				info.unitFilter[event] = nil
+			end
+			return register(self, event)
+		end
+
+		index.RegisterUnitEvent = function(self, event, ...)
+			local info = wrap(self)
+			local count = select("#", ...)
+			if count > 0 then
+				local filter = {}
+				for i = 1, count do
+					local unit = select(i, ...)
+					if unit then
+						filter[unit] = true
+					end
+				end
+				info.unitFilter[event] = filter
+			else
+				info.unitFilter[event] = nil
+			end
+			return register(self, event)
+		end
+
+		index.UnregisterEvent = function(self, event)
+			local info = wrapped[self]
+			if info then
+				info.unitFilter[event] = nil
+				info.direct[event] = nil
+				local mapped = eventMap[event]
+				if mapped then
+					for _, entry in ipairs(mapped) do
+						local list = info.byOldEvent[entry[1]]
+						if list then
+							list[event] = nil
+							if not next(list) and not info.direct[entry[1]] then
+								info.byOldEvent[entry[1]] = nil
+								pcall(UnregisterEvent, self, entry[1])
+							end
+						end
+					end
+				end
+			end
+			return (pcall(UnregisterEvent, self, event))
+		end
+
+		if UnregisterAllEvents then
+			index.UnregisterAllEvents = function(self)
+				local info = wrapped[self]
+				if info then
+					info.byOldEvent, info.unitFilter, info.direct = {}, {}, {}
+				end
+				return UnregisterAllEvents(self)
+			end
+		end
+
+		if rawget(index, "IsEventRegistered") == nil then
+			index.IsEventRegistered = function(self, event)
+				local info = wrapped[self]
+				if info and (info.direct[event] or info.unitFilter[event]) then
+					return true
+				end
+				return false
+			end
+		end
+	end
+end
+
+-- Backdrops: 3.3.5 frames draw backdrops natively, so the modern backdrop mixin only needs the
+-- helper methods; SetBackdrop itself stays the client's own.
+if _G.BackdropTemplateMixin == nil then
+	_G.BackdropTemplateMixin = {
+		OnBackdropLoaded = function(self)
+			if self.backdropInfo then
+				self:SetBackdrop(self.backdropInfo)
+			end
+		end,
+		OnBackdropSizeChanged = noop,
+		ApplyBackdrop = function(self)
+			if self.backdropInfo then
+				self:SetBackdrop(self.backdropInfo)
+			end
+		end,
+		ClearBackdrop = function(self) self:SetBackdrop(nil) end,
+		HasBackdropInfo = function(self, info) return self.backdropInfo == info end,
+		GetEdgeSize = function(self) return self.backdropInfo and self.backdropInfo.edgeSize or 0 end,
+		SetupTextureCoordinates = noop,
+		SetBorderBlendMode = noop,
+	}
+end
+
+local function backdrop(bg, edge, tile, tileSize, edgeSize, inset)
+	return {
+		bgFile = bg, edgeFile = edge, tile = tile, tileEdge = true, tileSize = tileSize, edgeSize = edgeSize,
+		insets = { left = inset, right = inset, top = inset, bottom = inset },
+	}
+end
+_G.BACKDROP_TOOLTIP_16_16_5555 = _G.BACKDROP_TOOLTIP_16_16_5555 or backdrop("Interface\\Tooltips\\UI-Tooltip-Background", "Interface\\Tooltips\\UI-Tooltip-Border", true, 16, 16, 5)
+_G.BACKDROP_TOOLTIP_0_16_5555 = _G.BACKDROP_TOOLTIP_0_16_5555 or backdrop("Interface\\Tooltips\\UI-Tooltip-Background", "Interface\\Tooltips\\UI-Tooltip-Border", true, 0, 16, 5)
+_G.BACKDROP_DIALOG_32_32 = _G.BACKDROP_DIALOG_32_32 or backdrop("Interface\\DialogFrame\\UI-DialogBox-Background", "Interface\\DialogFrame\\UI-DialogBox-Border", true, 32, 32, 11)
+_G.BACKDROP_DARK_DIALOG_32_32 = _G.BACKDROP_DARK_DIALOG_32_32 or backdrop("Interface\\DialogFrame\\UI-DialogBox-Background-Dark", "Interface\\DialogFrame\\UI-DialogBox-Border", true, 32, 32, 11)
+_G.BACKDROP_DIALOG_EDGE_32 = _G.BACKDROP_DIALOG_EDGE_32 or backdrop(nil, "Interface\\DialogFrame\\UI-DialogBox-Border", true, 32, 32, 11)
+_G.BACKDROP_TEXT_PANEL_0_16 = _G.BACKDROP_TEXT_PANEL_0_16 or backdrop(nil, "Interface\\Tooltips\\UI-Tooltip-Border", true, 0, 16, 5)
+_G.BACKDROP_TUTORIAL_16_16 = _G.BACKDROP_TUTORIAL_16_16 or backdrop("Interface\\TutorialFrame\\TutorialFrameBackground", "Interface\\Tooltips\\UI-Tooltip-Border", true, 16, 16, 3)
+_G.BACKDROP_SLIDER_8_8 = _G.BACKDROP_SLIDER_8_8 or backdrop("Interface\\Buttons\\UI-SliderBar-Background", "Interface\\Buttons\\UI-SliderBar-Border", true, 8, 8, 3)
+_G.BACKDROP_GOLD_DIALOG_32_32 = _G.BACKDROP_GOLD_DIALOG_32_32 or backdrop("Interface\\DialogFrame\\UI-DialogBox-Background", "Interface\\DialogFrame\\UI-DialogBox-Gold-Border", true, 32, 32, 11)
+_G.BACKDROP_WATERMARK_DIALOG_0_16 = _G.BACKDROP_WATERMARK_DIALOG_0_16 or backdrop(nil, "Interface\\DialogFrame\\UI-DialogBox-Border", true, 0, 16, 4)
+
+-- Nine-slice borders: drawn with the matching 3.3.5 backdrop.
+if _G.NineSliceUtil == nil then
+	local layouts = setmetatable({}, { __index = function() return BACKDROP_TOOLTIP_16_16_5555 end })
+	layouts.Dialog = BACKDROP_DIALOG_32_32
+	layouts.DialogFrame = BACKDROP_DIALOG_32_32
+	layouts.TooltipDefaultLayout = BACKDROP_TOOLTIP_16_16_5555
+	layouts.ButtonFrameTemplateNoPortrait = BACKDROP_DIALOG_32_32
+	layouts.PortraitFrameTemplate = BACKDROP_DIALOG_32_32
+	layouts.UniqueCornersLayout = BACKDROP_DIALOG_32_32
+	_G.NineSliceLayouts = _G.NineSliceLayouts or layouts
+	_G.NineSliceUtil = {
+		ApplyLayout = function(frame, layout)
+			if frame.SetBackdrop and type(layout) == "table" and (layout.bgFile or layout.edgeFile) then
+				frame:SetBackdrop(layout)
+			elseif frame.SetBackdrop then
+				frame:SetBackdrop(BACKDROP_TOOLTIP_16_16_5555)
+			end
+		end,
+		ApplyLayoutByName = function(frame, name)
+			if frame.SetBackdrop then
+				frame:SetBackdrop(layouts[name])
+			end
+		end,
+		GetLayout = function(name) return layouts[name] end,
+		AddLayout = function(name, layout) layouts[name] = layout end,
+		DisableSharpening = noop,
+		ApplyUniqueCornersLayout = function(frame) if frame.SetBackdrop then frame:SetBackdrop(BACKDROP_DIALOG_32_32) end end,
+	}
+end
+
+if _G.NineSlicePanelMixin == nil then
+	_G.NineSlicePanelMixin = {
+		OnLoad = function(self)
+			if self.layoutType then
+				NineSliceUtil.ApplyLayoutByName(self, self.layoutType)
+			end
+		end,
+		GetFrameLayoutType = function(self) return self.layoutType end,
+		GetFrameLayoutTextureKit = function(self) return self.layoutTextureKit end,
+		SetBorderColor = function(self, r, g, b, a) if self.SetBackdropBorderColor then self:SetBackdropBorderColor(r, g, b, a) end end,
+		SetCenterColor = function(self, r, g, b, a) if self.SetBackdropColor then self:SetBackdropColor(r, g, b, a) end end,
+		SetVertexColor = function(self, r, g, b, a) if self.SetBackdropBorderColor then self:SetBackdropBorderColor(r, g, b, a) end end,
+		GetBorderColor = function(self) if self.GetBackdropBorderColor then return self:GetBackdropBorderColor() end return 1, 1, 1, 1 end,
+	}
+end

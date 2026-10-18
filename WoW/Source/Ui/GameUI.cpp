@@ -4,6 +4,7 @@
 #include "WoW/Source/DB/Rec/MovieRec.h"
 #include "WoW/Source/DB/Rec/MovieVariationRec.h"
 #include "WoW/Source/Ui/CKBSystem.h"
+#include "WoW/Source/UIUtil/ModernUI.h"
 #include <cmath>
 #include <cstdarg>
 #include <cstring>
@@ -1802,6 +1803,7 @@ void CGGameUI::InitializeFrameXML() {
     }
 
     BugReportRegister();
+    ModernUI_Load(); // not in the original: modern addon layer, before any addon loads
     LoadAddOns(&status);
     FrameXML_RegisterLoadProgressCallback(nullptr, nullptr, 0);
     CGGameUI::Initialize();

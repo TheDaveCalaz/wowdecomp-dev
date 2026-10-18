@@ -563,8 +563,9 @@ static int32_t Script_RegisterEvent(lua_State* L) {
         return 0;
     }
 
-    frame->RegisterScriptEvent(lua_tolstring(L, 2, nullptr));
-    return 0;
+    // Not in the original: return whether the event exists, as modern clients do.
+    lua_pushboolean(L, frame->RegisterScriptEvent(lua_tolstring(L, 2, nullptr)));
+    return 1;
 }
 
 // VERIFY: 1edce814 manual

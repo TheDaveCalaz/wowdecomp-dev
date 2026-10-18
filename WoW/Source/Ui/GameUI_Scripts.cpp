@@ -2673,7 +2673,138 @@ static int32_t Script_GetItemInfo(lua_State* L) {
     SStrPrintf(texture, sizeof(texture), "%s%s%s", path, separator, CGItem_C::GetInventoryArt(stats->m_displayId));
     lua_pushstring(L, texture);
     lua_pushnumber(L, static_cast<int32_t>(stats->m_sellPrice));
-    return 11;
+
+    // Not in the original: the extra returns modern clients give (classID, subclassID, bindType,
+    // expansionID, setID, isCraftingReagent). Older addons ignore them.
+    lua_pushnumber(L, static_cast<int32_t>(stats->m_class));
+    lua_pushnumber(L, static_cast<int32_t>(stats->m_subClass));
+    lua_pushnumber(L, static_cast<int32_t>(stats->m_bonding));
+    lua_pushnumber(L, 2.0); // every item a 3.3.5 client knows counts as Wrath content or older
+    if (stats->m_itemSet) {
+        lua_pushnumber(L, static_cast<int32_t>(stats->m_itemSet));
+    } else {
+        lua_pushnil(L);
+    }
+    lua_pushboolean(L, 0);
+    return 17;
+}
+
+// Not in the original client: modern GetItemInfoInstant(item).
+// Answers from Item.dbc, so it works for items the client has never seen, with no server query.
+// Returns itemID, itemType, itemSubType, itemEquipLoc, icon, classID, subclassID.
+static int32_t Script_GetItemInfoInstant(lua_State* L) {
+    int32_t itemId = 0;
+
+    if (lua_type(L, 1) == LUA_TNUMBER) {
+        itemId = static_cast<int32_t>(lua_tonumber(L, 1));
+    } else if (lua_isstring(L, 1)) {
+        const char* text = lua_tolstring(L, 1, nullptr);
+        const char* link = SStrStr(text, "item:");
+
+        if (link) {
+            itemId = SStrToInt(link + 5);
+        } else {
+            itemId = SStrToInt(text);
+
+            if (!itemId) {
+                itemId = GetItemIDByName(text);
+            }
+        }
+    } else {
+        luaL_error(L, "Usage: GetItemInfoInstant(itemID|\"name\"|\"itemlink\")");
+        return 0;
+    }
+
+    int32_t classId;
+    int32_t subClassId;
+    int32_t inventoryType;
+    int32_t displayId;
+    ItemRec* item = itemId > 0 ? g_itemDB.GetRecord(itemId) : nullptr;
+
+    if (item) {
+        classId = item->m_classID;
+        subClassId = item->m_subclassID;
+        inventoryType = item->m_inventoryType;
+        displayId = item->m_displayInfoID;
+    } else {
+        WOWGUID none = WOWGUID();
+        ItemStats_C* stats = itemId > 0 ? g_itemDBCache.GetRecord(itemId, none, nullptr, nullptr, false) : nullptr;
+
+        if (!stats) {
+            return 0;
+        }
+
+        classId = static_cast<int32_t>(stats->m_class);
+        subClassId = static_cast<int32_t>(stats->m_subClass);
+        inventoryType = static_cast<int32_t>(stats->m_inventoryType);
+        displayId = static_cast<int32_t>(stats->m_displayId);
+    }
+
+    lua_pushnumber(L, itemId);
+    ItemClassRec* itemClass = g_itemClassDB.GetRecord(classId);
+    lua_pushstring(L, itemClass ? itemClass->m_className : "");
+    const ItemSubClassRec* subClass = nullptr;
+
+    for (int32_t i = 0; i < g_itemSubClassDB.m_numRecords; i++) {
+        const ItemSubClassRec* rec = &g_itemSubClassDB.m_records[i];
+
+        if (rec->m_classID == classId && rec->m_subClassID == subClassId) {
+            subClass = rec;
+            break;
+        }
+    }
+
+    lua_pushstring(L, subClass ? (*subClass->m_verboseName ? subClass->m_verboseName : subClass->m_displayName) : "");
+    lua_pushstring(L, inventoryType >= 0 && inventoryType < 29 ? s_inventoryTypeTokens[inventoryType] : "");
+    const char* path = ClientDBStringLookup(3);
+    const char* separator = *path ? "\\" : "";
+    char icon[260];
+    SStrPrintf(icon, sizeof(icon), "%s%s%s", path, separator, CGItem_C::GetInventoryArt(displayId));
+    lua_pushstring(L, icon);
+    lua_pushnumber(L, classId);
+    lua_pushnumber(L, subClassId);
+    return 7;
+}
+
+// Not in the original client: modern GetItemClassInfo(classID) -> name, from ItemClass.dbc.
+static int32_t Script_GetItemClassInfo(lua_State* L) {
+    if (!lua_isnumber(L, 1)) {
+        luaL_error(L, "Usage: GetItemClassInfo(classID)");
+        return 0;
+    }
+
+    ItemClassRec* itemClass = g_itemClassDB.GetRecord(lua_tointeger(L, 1));
+
+    if (!itemClass) {
+        return 0;
+    }
+
+    lua_pushstring(L, itemClass->m_className);
+    return 1;
+}
+
+// Not in the original client: modern GetItemSubClassInfo(classID, subClassID) -> name, isArmorType,
+// from ItemSubClass.dbc.
+static int32_t Script_GetItemSubClassInfo(lua_State* L) {
+    if (!lua_isnumber(L, 1) || !lua_isnumber(L, 2)) {
+        luaL_error(L, "Usage: GetItemSubClassInfo(classID, subClassID)");
+        return 0;
+    }
+
+    int32_t classId = lua_tointeger(L, 1);
+    int32_t subClassId = lua_tointeger(L, 2);
+
+    for (int32_t i = 0; i < g_itemSubClassDB.m_numRecords; i++) {
+        const ItemSubClassRec* rec = &g_itemSubClassDB.m_records[i];
+
+        if (rec->m_classID == classId && rec->m_subClassID == subClassId) {
+            lua_pushstring(L, *rec->m_verboseName ? rec->m_verboseName : rec->m_displayName);
+            lua_pushboolean(L, classId == 4 && subClassId >= 1 && subClassId <= 4);
+            return 2;
+        }
+    }
+
+    return 0;
 }
 
 // VERIFY: 75f296f7 auto
@@ -6381,6 +6512,9 @@ static FrameScript_Method s_ScriptFunctions[] = {
     { "GetRealmName", &Script_GetRealmName },
     { "GetItemQualityColor", &Script_GetItemQualityColor },
     { "GetItemInfo", &Script_GetItemInfo },
+    { "GetItemInfoInstant", &Script_GetItemInfoInstant }, // not in the original
+    { "GetItemClassInfo", &Script_GetItemClassInfo }, // not in the original
+    { "GetItemSubClassInfo", &Script_GetItemSubClassInfo }, // not in the original
     { "GetItemGem", &Script_GetItemGem },
     { "GetExtendedItemInfo", &Script_GetExtendedItemInfo },
     { "GetItemIcon", &Script_GetItemIcon },
