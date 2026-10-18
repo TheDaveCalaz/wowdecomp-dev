@@ -15,6 +15,7 @@
 #include "Engine/Source/Services/SysMessage.h"
 #include "Engine/Source/Services/Texture.h"
 #include "Engine/Source/Services/TextureBlob.h"
+#include "Engine/Source/Services/TextureImage.h"
 #include "Engine/Source/Services/TextureInt.h"
 #include "Engine/Source/Storm/H/storm.h"
 #include "Engine/Source/Tempest/C2Vector.h"
@@ -2474,6 +2475,21 @@ CTexture* CreateTgaTexture(const char* fileName, char* extension, int32_t flags,
 // VERIFY: 8821b223 manual
 // OFFSET: 0x004B9760
 CTexture* TextureCreate(const char* fileName, CGxTexFlags texFlags, CStatus* status, uint32_t flags) {
+    // Not in the original: modern addons often write paths with forward slashes.
+    char slashFixed[260];
+
+    if (fileName && SStrChr(fileName, '/')) {
+        SStrCopy(slashFixed, fileName, sizeof(slashFixed));
+
+        for (char* c = slashFixed; *c; ++c) {
+            if (*c == '/') {
+                *c = '\\';
+            }
+        }
+
+        fileName = slashFixed;
+    }
+
     if (!fileName) {
         DebugValidate("fileName");
         SErrSetLastError(STORM_ERROR_INVALID_PARAMETER);
@@ -2534,6 +2550,14 @@ CTexture* TextureCreate(const char* fileName, CGxTexFlags texFlags, CStatus* sta
 
         texFlags = requested;
         type = (type + 1) % 2;
+    }
+
+    // Not in the original: PNG and JPEG files, as modern clients load them.
+    texture = CreateImageTexture(fileName, requested);
+
+    if (texture) {
+        TextureCacheNewTexture(texture, requested);
+        return texture;
     }
 
     TextureReportLoadError("texture", fileName, status);

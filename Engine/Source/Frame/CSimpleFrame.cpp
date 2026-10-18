@@ -665,6 +665,11 @@ void CSimpleFrame::LoadXML_Layers(XMLNode* node, CStatus* status) {
             } else if (!SStrCmpI(child->m_name.m_str, "FontString", STORM_MAX_STR)) {
                 CSimpleFontString* string = LoadXML_String(child, this, status);
                 string->SetFrame(this, drawLayer, string->m_shown);
+            } else if (!SStrCmpI(child->m_name.m_str, "MaskTexture", STORM_MAX_STR) || !SStrCmpI(child->m_name.m_str, "Line", STORM_MAX_STR)) {
+                // Not in the original: modern mask textures and lines. This client cannot mask or draw lines, so
+                // they are created as hidden textures; their names and parentKeys exist for the addon's code.
+                CSimpleTexture* texture = LoadXML_Texture(child, this, status);
+                texture->SetFrame(this, drawLayer, 0);
             } else {
                 const char* frameName = this->GetName();
                 status->Add(STATUS_WARNING, "Frame %s: Unknown child node in %s element: %s", frameName ? frameName : "<unnamed>", layerNode->m_name.m_str, child->m_name.m_str);

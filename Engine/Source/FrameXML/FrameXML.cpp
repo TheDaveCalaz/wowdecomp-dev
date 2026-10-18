@@ -284,6 +284,24 @@ CSimpleFrame* FrameXML_CreateFrame(XMLNode* node, CSimpleFrame* parent, CStatus*
 
     FrameFactoryNode* factory = s_factories.Ptr(node->m_name.m_str);
 
+    // Not in the original: frame types added after 3.3.5 are built as their nearest 3.3.5 type.
+    if (!factory) {
+        static const char* const s_aliases[][2] = {
+            { "EventFrame", "Frame" }, { "DropdownButton", "Button" }, { "DropDownToggleButton", "Button" },
+            { "ItemButton", "Button" }, { "ContainedAlertFrame", "Button" }, { "CinematicModel", "PlayerModel" },
+            { "ModelScene", "Frame" }, { "ScrollBox", "Frame" }, { "UnitPositionFrame", "Frame" },
+            { "OffScreenFrame", "Frame" }, { "FogOfWarFrame", "Frame" }, { "ScenarioPOIFrame", "Frame" },
+            { "ArchaeologyDigSiteFrame", "Frame" }, { "Browser", "Frame" }, { "Checkout", "Frame" },
+        };
+
+        for (const auto& alias : s_aliases) {
+            if (!SStrCmpI(node->m_name.m_str, alias[0], STORM_MAX_STR)) {
+                factory = s_factories.Ptr(alias[1]);
+                break;
+            }
+        }
+    }
+
     if (!factory) {
         status->Add(STATUS_WARNING, "Unknown frame type: %s", node->m_name.m_str);
         return nullptr;
@@ -537,6 +555,36 @@ int32_t FrameXML_ProcessFile(const char* filename, const char* wrapper, MD5_CTX*
                     font->LoadXML(child, status);
                 } else {
                     fileStatus.Add(STATUS_WARNING, "Unnamed font node at top level");
+                }
+            } else if (!SStrCmpI(child->m_name.m_str, "FontFamily", STORM_MAX_STR)) {
+                // Not in the original: a modern font family lists one font per alphabet. This client has one font
+                // per name, so the family becomes the font of its "roman" member (or its first member).
+                const char* fontName = child->GetAttributeByName("name");
+                XMLNode* chosen = nullptr;
+
+                for (XMLNode* member = child->m_child; member; member = member->m_next) {
+                    if (SStrCmpI(member->m_name.m_str, "Member", STORM_MAX_STR)) {
+                        continue;
+                    }
+
+                    XMLNode* memberFont = member->GetChildByName("Font");
+
+                    if (!memberFont) {
+                        continue;
+                    }
+
+                    const char* alphabet = member->GetAttributeByName("alphabet");
+
+                    if (!chosen || (alphabet && !SStrCmpI(alphabet, "roman", STORM_MAX_STR))) {
+                        chosen = memberFont;
+                    }
+                }
+
+                if (fontName && *fontName && chosen) {
+                    CSimpleFont* font = CSimpleFont::GetFont(fontName, 1);
+                    font->LoadXML(chosen, status);
+                } else {
+                    fileStatus.Add(STATUS_WARNING, "FontFamily %s has no usable font", fontName ? fontName : "<unnamed>");
                 }
             } else {
                 const char* isVirtual = child->GetAttributeByName("virtual");

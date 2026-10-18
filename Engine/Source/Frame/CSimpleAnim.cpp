@@ -633,7 +633,8 @@ void CSimpleAnim::LoadXML(XMLNode* node, CStatus* status) {
     if (orderString && *orderString) {
         int32_t order = SStrToInt(orderString) - 1;
 
-        if (order < 0 || order > 99) {
+        // Not in the original: modern files use order="0" for "first"; it is accepted quietly.
+        if (order < -1 || order > 99) {
             const char* name = this->GetName();
             status->Add(STATUS_WARNING, "%s: Invalid order value: %s. Order must be between %d and %d.", name ? name : "<unnamed>", orderString, 1, 100);
         }
