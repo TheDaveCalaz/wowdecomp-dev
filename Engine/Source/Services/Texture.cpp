@@ -15,6 +15,7 @@
 #include "Engine/Source/Services/SysMessage.h"
 #include "Engine/Source/Services/Texture.h"
 #include "Engine/Source/Services/TextureBlob.h"
+#include "Engine/Source/Services/TextureFileIDs.h"
 #include "Engine/Source/Services/TextureImage.h"
 #include "Engine/Source/Services/TextureInt.h"
 #include "Engine/Source/Storm/H/storm.h"
@@ -2475,6 +2476,9 @@ CTexture* CreateTgaTexture(const char* fileName, char* extension, int32_t flags,
 // VERIFY: 8821b223 manual
 // OFFSET: 0x004B9760
 CTexture* TextureCreate(const char* fileName, CGxTexFlags texFlags, CStatus* status, uint32_t flags) {
+    // Not in the original: modern addons name textures by file ID ("133628") as well as by path.
+    fileName = TextureResolveFileID(fileName);
+
     // Not in the original: modern addons often write paths with forward slashes.
     char slashFixed[260];
 
