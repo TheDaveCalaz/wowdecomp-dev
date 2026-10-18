@@ -1,4 +1,6 @@
 #include <cmath>
+#include <cstdio>
+#include <ctime>
 #include <cstdint>
 #include <cstring>
 #include <malloc.h>
@@ -1100,6 +1102,8 @@ void FrameScript_PackVariable(lua_State* L, const char* name, int32_t depth, cha
 
 // VERIFY: 472836ad auto
 // OFFSET: 0x00819730
+static void FrameScript_LogError(const char* message);
+
 static int32_t FrameScript_HandleError(lua_State* L) {
     if (!lua_isstring(L, -1)) {
         lua_pushstring(L, "UNKNOWN ERROR");
@@ -1164,7 +1168,53 @@ static int32_t FrameScript_HandleError(lua_State* L) {
         }
     }
 
+    FrameScript_LogError(lua_tostring(L, -1));
+
     return 1;
+}
+
+// Not in the original: every Lua error, at load or later while playing, is also appended to
+// Logs\LuaErrors.log with the time. The same error repeated (an OnUpdate failing every frame) is written
+// the first time and then every 100th time, with its count.
+static void FrameScript_LogError(const char* message) {
+    static uint32_t s_hashes[512];
+    static uint32_t s_counts[512];
+    uint32_t hash = 2166136261u;
+
+    for (const char* c = message; *c; ++c) {
+        hash = (hash ^ static_cast<uint8_t>(*c)) * 16777619u;
+    }
+
+    uint32_t slot = hash % 512;
+
+    if (s_hashes[slot] == hash) {
+        s_counts[slot]++;
+
+        if (s_counts[slot] % 100) {
+            return;
+        }
+    } else {
+        s_hashes[slot] = hash;
+        s_counts[slot] = 1;
+    }
+
+    FILE* file = fopen("Logs\\LuaErrors.log", "a");
+
+    if (!file) {
+        return;
+    }
+
+    time_t now = time(nullptr);
+    char stamp[32];
+    strftime(stamp, sizeof(stamp), "%m/%d %H:%M:%S", localtime(&now));
+
+    if (s_counts[slot] > 1) {
+        fprintf(file, "%s  (x%u) %s\n", stamp, s_counts[slot], message);
+    } else {
+        fprintf(file, "%s  %s\n", stamp, message);
+    }
+
+    fclose(file);
 }
 
 // VERIFY: 6d24b23a auto

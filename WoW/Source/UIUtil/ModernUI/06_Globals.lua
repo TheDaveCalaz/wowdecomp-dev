@@ -521,3 +521,42 @@ fontFrom("Game20Font", "GameFontNormalHuge")
 fontFrom("Fancy16Font", "GameFontNormalLarge")
 fontFrom("Fancy22Font", "GameFontNormalHuge")
 fontFrom("Fancy24Font", "GameFontNormalHuge")
+
+-- Modern strings and constants the test addons read, found by scanning their code.
+local strings = {
+	QUEST_LOGIC_AND = "AND", QUEST_LOGIC_OR = "OR", SOUL_SHARDS = "Soul Shards", OPTIONS = "Options",
+	INLINE_TANK_ICON = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:16:16:0:0:64:64:0:19:22:41|t",
+	INLINE_HEALER_ICON = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:16:16:0:0:64:64:20:39:1:20|t",
+	INLINE_DAMAGER_ICON = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:16:16:0:0:64:64:20:39:22:41|t",
+	ADVENTURE_MAP_TITLE = "Adventure Map", CHALLENGE_MODE = "Mythic+",
+	DECIMAL_SEPERATOR = ".", LARGE_NUMBER_SEPERATOR = ",",
+	EMPTY_SOCKET_COGWHEEL = "Cogwheel Socket", EMPTY_SOCKET_DOMINATION = "Domination Socket",
+	EMPTY_SOCKET_HYDRAULIC = "Sha-Touched", EMPTY_SOCKET_PRISMATIC = "Prismatic Socket",
+	ITEM_BIND_TO_ACCOUNT_UNTIL_EQUIP = "Binds to Warband until equipped", ITEM_BIND_TO_BNETACCOUNT = "Binds to Battle.net account",
+	ITEM_BNETACCOUNTBOUND = "Battle.net Account Bound", ITEM_MOD_CR_MULTISTRIKE_SHORT = "Multistrike",
+	ITEM_MOD_MASTERY_RATING_SHORT = "Mastery", ITEM_MOD_PVP_POWER_SHORT = "PvP Power",
+	INSPECTED_UNIT = "Inspected unit", MAX_REPUTATION_REACTION = 8,
+	PLAYER_DIFFICULTY3 = "Raid Finder", PLAYER_DIFFICULTY6 = "Mythic", PLAYER_DIFFICULTY_TIMEWALKER = "Timewalking",
+	PLAYER_DIFFICULTY_WORLD_RAID = "World Raid", PRIME_GLYPH = "Prime Glyph",
+	PROFESSIONS_CRAFTING_QUALITY = "Quality: %s", PROFESSIONS_USED_IN_COOKING = "Cooking Ingredient",
+	QUEST_PROGRESS_TOOLTIP_QUEST_READY_FOR_TURN_IN = "Ready for turn-in",
+	QUESTION_MARK_ICON = "Interface\\Icons\\INV_Misc_QuestionMark", REFORGED = "Reforged",
+	RENOWN_LEVEL_LABEL = "Renown %d", REQUIRES_RELOAD = "Requires reload", RESET_POSITION = "Reset Position",
+	SCENARIO_STAGE = "Stage %d", SOCKETING_ITEM_MIN_LEVEL_I = "Requires item level %d", SOURCES = "Sources",
+	SPEC_WARLOCK_DESTRUCTION = 3, STAT_ATTACK_SPEED = "Attack Speed", STAT_AVERAGE_PVP_ITEM_LEVEL = "PvP item level %d",
+	STAT_CATEGORY_ATTRIBUTES = "Attributes", STAT_CATEGORY_ENHANCEMENTS = "Enhancements", STAT_DPS_SHORT = "DPS",
+	STAT_STURDINESS = "Durability", SUMMON_RANDOM_PET = "Summon Random Pet",
+	TRANSMOGRIFY_TOOLTIP_APPEARANCE_KNOWN = "You've collected this appearance",
+	TRANSMOGRIFY_TOOLTIP_APPEARANCE_UNKNOWN = "You haven't collected this appearance",
+	TRANSMOGRIFY_TOOLTIP_ITEM_UNKNOWN_APPEARANCE_KNOWN = "You've collected this appearance, but not from this item",
+	LFG_LIST_LANGUAGE_ENUS = "English", LFG_LIST_LANGUAGE_DEDE = "German", LFG_LIST_LANGUAGE_FRFR = "French",
+	LFG_LIST_LANGUAGE_ITIT = "Italian", LFG_LIST_LANGUAGE_KOKR = "Korean", LFG_LIST_LANGUAGE_PTBR = "Portuguese",
+	LFG_LIST_LANGUAGE_RURU = "Russian", PAPERDOLL_EQUIPMENTMANAGER = "Equipment Manager",
+	NUM_TOTAL_EQUIPPED_BAG_SLOTS = 4, NUM_TOTAL_BAG_FRAMES = 5,
+	LE_PARTY_CATEGORY_HOME = 1, LE_PARTY_CATEGORY_INSTANCE = 2,
+	LE_ITEM_BIND_ON_ACQUIRE = 1, LE_ITEM_BIND_QUEST = 4, LE_ITEM_CLASS_GEM = 3, LE_ITEM_GEM_ARTIFACTRELIC = 11,
+	LE_ITEM_QUALITY_ARTIFACT = 6, LEFTSHOULDERSLOT = 3, RIGHTSHOULDERSLOT = 3,
+}
+for name, value in pairs(strings) do
+	define(name, value)
+end
