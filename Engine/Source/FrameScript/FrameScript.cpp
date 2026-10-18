@@ -1119,10 +1119,18 @@ static int32_t FrameScript_HandleError(lua_State* L) {
     }
 
     if (s_errorHandlerFunc != -1) {
+        // Not in the original: the UI's handler (seterrorhandler) runs protected, on a copy of the message, and
+        // the message itself is what this returns. The original called it unprotected and returned whatever
+        // it returned, so a handler that failed turned every error into "error in error handling" and the
+        // real message never reached FrameXML.log.
         s_inErrorHandler = 1;
         lua_rawgeti(L, LUA_REGISTRYINDEX, s_errorHandlerFunc);
-        lua_insert(L, -2);
-        lua_call(L, 1, 1);
+        lua_pushvalue(L, -2);
+
+        if (lua_pcall(L, 1, 0, 0)) {
+            lua_pop(L, 1);
+        }
+
         s_inErrorHandler = 0;
     }
 
