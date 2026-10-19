@@ -280,7 +280,14 @@ static int32_t Script_GetTexture(lua_State* L) {
 static int32_t Script_SetTexture(lua_State* L) {
     CSimpleTexture* texture = static_cast<CSimpleTexture*>(FrameScript_GetObjectThis(L, CSimpleTexture::GetObjectType()));
 
-    if (lua_isnumber(L, 2)) {
+    // ModernUI: a single number is a file ID (modern AddOns give icons and textures by ID); colours are
+    // only taken from SetTexture(r, g, b [, a]). A lone number used to paint a solid colour, which drew
+    // every file-ID icon as a red square.
+    bool fileID = lua_type(L, 2) == LUA_TNUMBER && !lua_isnumber(L, 3);
+
+    if (fileID && lua_tonumber(L, 2) <= 0) {
+        texture->SetTexture(static_cast<const char*>(nullptr), 0, 0, CSimpleTexture::s_textureFilterMode, ImageMode_Normal);
+    } else if (lua_isnumber(L, 2) && !fileID) {
         CImVector color;
         FrameScript_GetColor(L, 2, color);
         texture->SetTexture(color);

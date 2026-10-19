@@ -140,7 +140,7 @@
 		</Frames>
 		<Scripts>
 			<OnLoad>
-				self.PortraitContainer = self.PortraitContainer or { portrait = self.portrait }
+				self.PortraitContainer = self.PortraitContainer or ModernUI_PortraitContainer(self.portrait)
 				if self.TitleContainer then
 					self.TitleContainer.TitleText = self.TitleText
 				end
@@ -164,7 +164,7 @@
 		<Scripts>
 			<OnLoad>
 				self.portrait:Hide()
-				self.PortraitContainer = { portrait = self.portrait }
+				self.PortraitContainer = ModernUI_PortraitContainer(self.portrait)
 				if self.TitleContainer then
 					self.TitleContainer.TitleText = self.TitleText
 				end
@@ -330,4 +330,22 @@
 		</Scripts>
 	</EditBox>
 	<EditBox name="BagSearchBoxTemplate" inherits="SearchBoxTemplate" virtual="true"/>
+
+	<!-- Texture templates modern code creates textures from. -->
+	<Texture name="_UI-Frame-TitleTileBg" virtual="true">
+		<Color r="0.08" g="0.08" b="0.08" a="0.9"/>
+	</Texture>
+	<Texture name="UI-Frame-TitleTileBg" inherits="_UI-Frame-TitleTileBg" virtual="true"/>
+	<Texture name="UIPanelButtonUpTexture" file="Interface\Buttons\UI-Panel-Button-Up" virtual="true">
+		<TexCoords left="0" right="0.625" top="0" bottom="0.6875"/>
+	</Texture>
+	<Texture name="UIPanelButtonDownTexture" file="Interface\Buttons\UI-Panel-Button-Down" virtual="true">
+		<TexCoords left="0" right="0.625" top="0" bottom="0.6875"/>
+	</Texture>
+	<Texture name="UIPanelButtonHighlightTexture" file="Interface\Buttons\UI-Panel-Button-Highlight" alphaMode="ADD" virtual="true">
+		<TexCoords left="0" right="0.625" top="0" bottom="0.6875"/>
+	</Texture>
+	<Texture name="UIPanelButtonDisabledTexture" file="Interface\Buttons\UI-Panel-Button-Disabled" virtual="true">
+		<TexCoords left="0" right="0.625" top="0" bottom="0.6875"/>
+	</Texture>
 </Ui>

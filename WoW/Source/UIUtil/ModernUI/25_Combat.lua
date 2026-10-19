@@ -196,3 +196,18 @@ if _G.PortraitFrameMixin == nil then
 	define("ButtonFrameTemplateMixin", PortraitFrameMixin)
 	define("DefaultPanelMixin", TitledPanelMixin)
 end
+
+-- The modern portrait sits in a container frame that code shows and hides; here the container stands
+-- for the portrait texture itself.
+_G.ModernUI_PortraitContainer = function(portrait)
+	local container = { portrait = portrait }
+	function container:Show() if portrait then portrait:Show() end end
+	function container:Hide() if portrait then portrait:Hide() end end
+	function container:SetShown(shown) if shown then self:Show() else self:Hide() end end
+	function container:IsShown() return portrait and portrait:IsShown() end
+	function container:SetPoint(...) if portrait then portrait:SetPoint(...) end end
+	function container:ClearAllPoints() if portrait then portrait:ClearAllPoints() end end
+	function container:SetFrameLevel() end
+	function container:GetFrameLevel() return 1 end
+	return container
+end

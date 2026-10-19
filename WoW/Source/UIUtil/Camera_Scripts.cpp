@@ -274,8 +274,17 @@ static int32_t Script_VehicleCameraZoomOut(lua_State* L) {
     return Script_CameraZoomOut(L);
 }
 
+// ModernUI: not in the original client. The camera's current distance from the character, as the
+// modern GetCameraZoom returns it (DialogueUI, Narcissus and others zoom relative to it).
+static int32_t Script_GetCameraZoom(lua_State* L) {
+    CGCamera* camera = CGWorldFrame::GetActiveCamera();
+    lua_pushnumber(L, camera ? camera->m_distance : 0.0);
+    return 1;
+}
+
 // STATIC: 0x00AD2060
 static FrameScript_Method s_ScriptFunctions[] = {
+    { "GetCameraZoom", &Script_GetCameraZoom },
     { "CameraZoomIn", &Script_CameraZoomIn },
     { "CameraZoomOut", &Script_CameraZoomOut },
     { "MoveViewInStart", &Script_MoveViewInStart },

@@ -370,11 +370,11 @@ define("GetFileIDFromPath", function() return nil end)
 
 define("ButtonFrameTemplate_HidePortrait", function(frame)
 	if frame.portrait then frame.portrait:Hide() end
-	if frame.PortraitContainer then frame.PortraitContainer:Hide() end
+	if type(frame.PortraitContainer) == "table" and frame.PortraitContainer.Hide then frame.PortraitContainer:Hide() end
 end)
 define("ButtonFrameTemplate_ShowPortrait", function(frame)
 	if frame.portrait then frame.portrait:Show() end
-	if frame.PortraitContainer then frame.PortraitContainer:Show() end
+	if type(frame.PortraitContainer) == "table" and frame.PortraitContainer.Show then frame.PortraitContainer:Show() end
 end)
 
 define("IsLevelAtEffectiveMaxLevel", function(level) return level >= 80 end)
