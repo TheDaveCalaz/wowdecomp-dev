@@ -1102,7 +1102,7 @@ void FrameScript_PackVariable(lua_State* L, const char* name, int32_t depth, cha
 
 // VERIFY: 472836ad auto
 // OFFSET: 0x00819730
-static void FrameScript_LogError(const char* message);
+void FrameScript_LogError(const char* message);
 
 static int32_t FrameScript_HandleError(lua_State* L) {
     if (!lua_isstring(L, -1)) {
@@ -1176,7 +1176,7 @@ static int32_t FrameScript_HandleError(lua_State* L) {
 // Not in the original: every Lua error, at load or later while playing, is also appended to
 // Logs\LuaErrors.log with the time. The same error repeated (an OnUpdate failing every frame) is written
 // the first time and then every 100th time, with its count.
-static void FrameScript_LogError(const char* message) {
+void FrameScript_LogError(const char* message) {
     static uint32_t s_hashes[512];
     static uint32_t s_counts[512];
     uint32_t hash = 2166136261u;

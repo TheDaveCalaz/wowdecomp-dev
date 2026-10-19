@@ -457,8 +457,60 @@ static int32_t Script_seterrorhandler(lua_State* L) {
 
 // VERIFY: e7da762e auto
 // OFFSET: 0x00817420
-static int32_t Script_geterrorhandler(lua_State* L) {
+// ModernUI: AddOns often catch their own errors (xpcall with geterrorhandler()) and pass them to the
+// handler themselves, so those errors never went through the client's error path and never reached
+// Logs\LuaErrors.log. geterrorhandler() now returns a small function that logs the message (with where
+// it was raised) and then calls the real handler; the client's own path logs it already, so it is not
+// logged twice.
+static int32_t ModernUI_ErrorHandlerProxy(lua_State* L) {
+    int32_t args = lua_gettop(L);
+
+    if (!s_inErrorHandler) {
+        const char* message = lua_isstring(L, 1) ? lua_tostring(L, 1) : "UNKNOWN ERROR";
+        char line[2048];
+        size_t used = static_cast<size_t>(SStrPrintf(line, sizeof(line), "%s (caught by an AddOn", message));
+        lua_Debug ar;
+
+        for (int32_t level = 1, shown = 0; shown < 4 && used < sizeof(line) - 64 && lua_getstack(L, level, &ar); level++) {
+            if (!lua_getinfo(L, "Sl", &ar) || ar.currentline <= 0 || !ar.short_src[0]) {
+                continue;
+            }
+
+            int32_t written = SStrPrintf(line + used, sizeof(line) - used, "%s %s:%d", shown ? "," : "; from", ar.short_src, ar.currentline);
+
+            if (written <= 0) {
+                break;
+            }
+
+            used += written;
+            shown++;
+        }
+
+        SStrPack(line, ")", sizeof(line));
+        FrameScript_LogError(line);
+    }
+
+    if (s_errorHandlerFunc == -1) {
+        return 0;
+    }
+
+    int32_t wasIn = s_inErrorHandler;
+    s_inErrorHandler = 1;
     lua_rawgeti(L, LUA_REGISTRYINDEX, s_errorHandlerFunc);
+    lua_insert(L, 1);
+    int32_t status = lua_pcall(L, args, LUA_MULTRET, 0);
+    s_inErrorHandler = wasIn;
+
+    if (status) {
+        lua_pop(L, 1);
+        return 0;
+    }
+
+    return lua_gettop(L);
+}
+
+static int32_t Script_geterrorhandler(lua_State* L) {
+    lua_pushcfunction(L, ModernUI_ErrorHandlerProxy);
 
     return 1;
 }

@@ -37,6 +37,9 @@ extern double s_scriptTimeDivisor;
 extern int32_t s_inErrorHandler;
 extern int32_t s_errorHandlerRef;
 extern int32_t s_errorHandlerFunc;
+
+// ModernUI: appends a message to Logs\LuaErrors.log (not in the original).
+void FrameScript_LogError(const char* message);
 extern const luaL_Reg s_extraFuncs[];
 
 int32_t FrameScript_CompileFunction(const char* name, const char* wrapper, const char* body, CStatus* status);

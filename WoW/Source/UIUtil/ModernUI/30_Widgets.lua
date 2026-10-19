@@ -996,3 +996,14 @@ do
 		return frame
 	end
 end
+
+-- Enable/Disable and highlight locking on frame types that lack them here (modern sliders, models...).
+add(frameTypes, "Enable", function(self) stateOf(self).disabled = nil if self.EnableMouse then self:EnableMouse(true) end end)
+add(frameTypes, "Disable", function(self) stateOf(self).disabled = true end)
+add(frameTypes, "IsEnabled", function(self) return not stateOf(self).disabled end)
+add(frameTypes, "LockHighlight", noop)
+add(frameTypes, "UnlockHighlight", noop)
+for _, kind in ipairs({ "Model", "PlayerModel", "DressUpModel", "TabardModel" }) do
+	addTo(kind, "SetModelDrawLayer", noop)
+	addTo(kind, "GetModelDrawLayer", function() return "ARTWORK", 0 end)
+end
