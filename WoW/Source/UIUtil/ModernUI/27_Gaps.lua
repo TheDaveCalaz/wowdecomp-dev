@@ -640,9 +640,19 @@ end)
 -- their parts by key (icon, Count, Stock, NormalTexture...).
 
 do
+	-- A part is a region (a table with methods); a string under the same key (Bagnon keeps the icon's
+	-- file path in button.icon) is not one.
+	local function region(value)
+		return type(value) == "table" and value.SetTexture ~= nil or type(value) == "table" and value.SetText ~= nil
+	end
 	local function part(button, key, suffix)
 		local value = rawget(button, key)
-		if value then
+		if region(value) then
+			return value
+		end
+		local upper = key:sub(1, 1):upper() .. key:sub(2)
+		value = rawget(button, upper)
+		if region(value) then
 			return value
 		end
 		local name = button:GetName()
@@ -689,7 +699,7 @@ do
 		if not button then
 			return
 		end
-		local icon = part(button, "icon", "IconTexture") or rawget(button, "Icon")
+		local icon = part(button, "icon", "IconTexture")
 		if not icon then
 			return
 		end
@@ -701,13 +711,13 @@ do
 		icon:SetTexture(texture)
 	end
 	_G.SetItemButtonTextureVertexColor = function(button, r, g, b)
-		local icon = button and (part(button, "icon", "IconTexture") or rawget(button, "Icon"))
+		local icon = button and part(button, "icon", "IconTexture")
 		if icon then
 			icon:SetVertexColor(r, g, b)
 		end
 	end
 	_G.SetItemButtonDesaturated = function(button, desaturated, r, g, b)
-		local icon = button and (part(button, "icon", "IconTexture") or rawget(button, "Icon"))
+		local icon = button and part(button, "icon", "IconTexture")
 		if not icon then
 			return
 		end
