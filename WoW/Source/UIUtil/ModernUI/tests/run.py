@@ -9,7 +9,8 @@ if os.path.exists(HERE + '/compat.lua'): L.execute(open(HERE + '/compat.lua').re
 missing = set()
 L.globals()['_note'] = lambda k: missing.add(k)
 L.execute('setmetatable(_G, {__index = function(t, k) _note(k) return nil end})')
-for f in sorted(glob.glob(HERE + '/../*.lua')):
+# 40_ and later build Blizzard panels; test_panels.lua loads them with a widget mock of its own.
+for f in sorted(x for x in glob.glob(HERE + '/../*.lua') if not os.path.basename(x)[:1] in '456789'):
     r = L.execute('local f, e = loadstring(...) if not f then return false, e end local ok, err = pcall(f) return ok, tostring(err)', open(f).read()); ok, err = r if isinstance(r, tuple) else (r, None)
     print(('OK   ' if ok else 'FAIL ') + f.split('/')[-1] + ('' if ok else '  ' + str(err)))
 print('globals read at load time but missing:', sorted(missing))

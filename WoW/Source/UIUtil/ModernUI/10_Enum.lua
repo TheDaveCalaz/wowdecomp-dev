@@ -207,3 +207,8 @@ enum("QuestCompleteSpellType", {
 	LegacyBehavior = 0, Follower = 1, Tradeskill = 2, Ability = 3, Aura = 4, Spell = 5, Unlock = 6,
 	Companion = 7, QuestlineUnlock = 8, QuestlineReward = 9, QuestlineUnlockPart = 10, PossibleReward = 11,
 })
+
+enum("ConsoleCommandType", { Cvar = 0, Command = 1, Macro = 2, Script = 3 })
+enum("ConsoleCategory", {
+	Debug = 0, Graphics = 1, Console = 2, Combat = 3, Game = 4, Default = 5, Net = 6, Sound = 7, Gm = 8, Reveal = 9, None = 10,
+})

@@ -1,3 +1,4 @@
+#include <cstdio>
 #include "GameUI.h"
 #include <cmath>
 #include <cstdarg>
@@ -1508,6 +1509,113 @@ static int32_t Script_GetCVarInfo(lua_State* L) {
     }
 
     return 4;
+}
+
+// ModernUI: not in the original client. Lists every visible CVar as the modern
+// ConsoleGetAllCommands / C_Console.GetAllCommands do: { command, help, category, commandType = 0 }.
+struct ModernUICVarList {
+    lua_State* L;
+    int32_t index;
+};
+
+static void ModernUI_PushCVarInfo(CVar* var, void* arg) {
+    ModernUICVarList* list = static_cast<ModernUICVarList*>(arg);
+    lua_State* L = list->L;
+
+    list->index++;
+    lua_pushnumber(L, static_cast<double>(list->index));
+    lua_createtable(L, 0, 4);
+
+    lua_pushstring(L, var->m_key.m_str ? var->m_key.m_str : "");
+    lua_setfield(L, -2, "command");
+    lua_pushstring(L, var->m_help.m_str ? var->m_help.m_str : "");
+    lua_setfield(L, -2, "help");
+    lua_pushnumber(L, static_cast<double>(var->m_category));
+    lua_setfield(L, -2, "category");
+    lua_pushnumber(L, 0.0);
+    lua_setfield(L, -2, "commandType");
+
+    lua_settable(L, -3);
+}
+
+// ModernUI: not in the original client. Small account-wide text files the built-in interface
+// features keep their settings in (the AddOn list's sets and options), under WTF\ModernUI.
+// The key is limited to letters, digits and underscores so it can only name a file in that folder.
+static bool ModernUI_DataPath(const char* key, char* path, size_t size) {
+    if (!key || !*key || SStrLen(key) > 64) {
+        return false;
+    }
+
+    for (const char* c = key; *c; c++) {
+        bool ok = (*c >= 'a' && *c <= 'z') || (*c >= 'A' && *c <= 'Z') || (*c >= '0' && *c <= '9') || *c == '_';
+        if (!ok) {
+            return false;
+        }
+    }
+
+    snprintf(path, size, "WTF\\ModernUI\\%s.txt", key);
+    return true;
+}
+
+static int32_t Script_ModernUI_LoadData(lua_State* L) {
+    char path[128];
+
+    if (!ModernUI_DataPath(lua_tolstring(L, 1, nullptr), path, sizeof(path))) {
+        luaL_error(L, "Usage: ModernUI_LoadData(\"key\")");
+        return 0;
+    }
+
+    FILE* file = fopen(path, "rb");
+
+    if (!file) {
+        lua_pushnil(L);
+        return 1;
+    }
+
+    luaL_Buffer buffer;
+    luaL_buffinit(L, &buffer);
+    char chunk[4096];
+    size_t read;
+
+    while ((read = fread(chunk, 1, sizeof(chunk), file)) > 0) {
+        luaL_addlstring(&buffer, chunk, read);
+    }
+
+    fclose(file);
+    luaL_pushresult(&buffer);
+    return 1;
+}
+
+static int32_t Script_ModernUI_SaveData(lua_State* L) {
+    char path[128];
+
+    if (!ModernUI_DataPath(lua_tolstring(L, 1, nullptr), path, sizeof(path)) || !lua_isstring(L, 2)) {
+        luaL_error(L, "Usage: ModernUI_SaveData(\"key\", \"text\")");
+        return 0;
+    }
+
+    size_t length = 0;
+    const char* text = lua_tolstring(L, 2, &length);
+
+    OsCreateDirectory("WTF\\ModernUI", 0);
+    FILE* file = fopen(path, "wb");
+
+    if (!file) {
+        lua_pushboolean(L, 0);
+        return 1;
+    }
+
+    size_t written = fwrite(text, 1, length, file);
+    fclose(file);
+    lua_pushboolean(L, written == length);
+    return 1;
+}
+
+static int32_t Script_ConsoleGetAllCommands(lua_State* L) {
+    lua_createtable(L, 0, 0);
+    ModernUICVarList list = { L, 0 };
+    CVar::EnumerateRegistered(ModernUI_PushCVarInfo, &list);
+    return 1;
 }
 
 // VERIFY: 8bba5f56 manual
@@ -6334,6 +6442,9 @@ static FrameScript_Method s_ScriptFunctions[] = {
     { "IsDebugBuild", &Script_IsDebugBuild },
     { "RegisterCVar", &Script_RegisterCVar },
     { "GetCVarInfo", &Script_GetCVarInfo },
+    { "ConsoleGetAllCommands", &Script_ConsoleGetAllCommands },
+    { "ModernUI_LoadData", &Script_ModernUI_LoadData },
+    { "ModernUI_SaveData", &Script_ModernUI_SaveData },
     { "SetCVar", &Script_SetCVar },
     { "GetCVar", &Script_GetCVar },
     { "GetCVarBool", &Script_GetCVarBool },

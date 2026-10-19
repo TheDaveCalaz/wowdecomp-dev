@@ -888,7 +888,8 @@ do
 end
 do
 	local set = namespace("C_Console")
-	set("GetAllCommands", emptyFn)
+	-- The client lists its CVars natively (commandType 0 = CVar).
+	set("GetAllCommands", function() return ConsoleGetAllCommands and ConsoleGetAllCommands() or {} end)
 	set("GetColorFromType", function() return CreateColor(1, 1, 1, 1) end)
 end
 do

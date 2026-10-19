@@ -759,6 +759,21 @@ CVar* CVar::Lookup(const char* name) {
     return name ? s_registeredCVars.Ptr(name) : nullptr;
 }
 
+// ModernUI: not in the original client.
+void CVar::EnumerateRegistered(void (*callback)(CVar* var, void* arg), void* arg) {
+    for (CVar* var = s_registeredCVars.m_fulllist.Head(); var; var = s_registeredCVars.m_fulllist.Next(var)) {
+        if (!(var->m_flags & 0x80000000) && !(var->m_flags & 0x80)) {
+            continue;
+        }
+
+        if (var->m_flags & 0x40) {
+            continue;
+        }
+
+        callback(var, arg);
+    }
+}
+
 // VERIFY: ec2acf96 manual
 // OFFSET: 0x00767460
 CVar* CVar::LookupRegistered(const char* name) {
