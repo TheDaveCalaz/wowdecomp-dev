@@ -287,4 +287,47 @@
 		</Anchors>
 	</Button>
 	<Button name="UIPanelButtonNoTooltipTemplate" inherits="UIPanelButtonTemplate" virtual="true"/>
+
+	<!-- Search box: an input box with a grey "Search" hint and a clear button. -->
+	<EditBox name="SearchBoxTemplate" inherits="InputBoxTemplate" autoFocus="false" virtual="true">
+		<Size><AbsDimension x="150" y="20"/></Size>
+		<Layers>
+			<Layer level="OVERLAY">
+				<FontString name="$parentInstructions" parentKey="Instructions" inherits="GameFontDisableSmall" text="SEARCH" justifyH="LEFT">
+					<Anchors>
+						<Anchor point="LEFT"><Offset><AbsDimension x="2" y="0"/></Offset></Anchor>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Button name="$parentClearButton" parentKey="clearButton" hidden="true">
+				<Size><AbsDimension x="14" y="14"/></Size>
+				<Anchors>
+					<Anchor point="RIGHT"><Offset><AbsDimension x="-3" y="0"/></Offset></Anchor>
+				</Anchors>
+				<NormalTexture file="Interface\FriendsFrame\ClearBroadcastIcon"/>
+				<Scripts>
+					<OnClick>
+						SearchBoxTemplateClearButton_OnClick(self)
+					</OnClick>
+				</Scripts>
+			</Button>
+		</Frames>
+		<Scripts>
+			<OnEscapePressed>
+				self:ClearFocus()
+			</OnEscapePressed>
+			<OnTextChanged>
+				SearchBoxTemplate_OnTextChanged(self)
+			</OnTextChanged>
+			<OnEditFocusGained>
+				if self.Instructions then self.Instructions:Hide() end
+			</OnEditFocusGained>
+			<OnEditFocusLost>
+				SearchBoxTemplate_OnTextChanged(self)
+			</OnEditFocusLost>
+		</Scripts>
+	</EditBox>
+	<EditBox name="BagSearchBoxTemplate" inherits="SearchBoxTemplate" virtual="true"/>
 </Ui>

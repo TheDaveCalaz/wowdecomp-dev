@@ -613,3 +613,302 @@ if ScrollingEdit_OnUpdate then
 		return ScrollingEdit_OnUpdate_335(self, elapsed, scrollFrame)
 	end
 end
+
+-- Cooldowns -----------------------------------------------------------------------------------------
+
+define("CooldownFrame_Set", function(cooldown, start, duration, enable, forceShowDrawEdge, modRate)
+	if not cooldown then
+		return
+	end
+	if enable and enable ~= 0 and start and start > 0 and duration and duration > 0 then
+		cooldown:SetCooldown(start, duration)
+		cooldown:Show()
+	else
+		cooldown:SetCooldown(0, 0)
+		cooldown:Hide()
+	end
+end)
+define("CooldownFrame_Clear", function(cooldown)
+	if cooldown then
+		cooldown:SetCooldown(0, 0)
+		cooldown:Hide()
+	end
+end)
+
+-- Item button helpers that also work on unnamed buttons ----------------------------------------------
+-- The 3.3.5 versions find a button's parts by its name; modern buttons are often unnamed and keep
+-- their parts by key (icon, Count, Stock, NormalTexture...).
+
+do
+	local function part(button, key, suffix)
+		local value = rawget(button, key)
+		if value then
+			return value
+		end
+		local name = button:GetName()
+		return name and _G[name .. suffix]
+	end
+	_G.SetItemButtonCount = function(button, count)
+		if not button then
+			return
+		end
+		count = count or 0
+		button.count = count
+		local text = part(button, "Count", "Count")
+		if not text then
+			return
+		end
+		if count > 1 or (button.isBag and count > 0) then
+			if count > (button.maxDisplayCount or 9999) then
+				count = "*"
+			end
+			text:SetText(count)
+			text:Show()
+		else
+			text:Hide()
+		end
+	end
+	_G.SetItemButtonStock = function(button, numInStock)
+		if not button then
+			return
+		end
+		numInStock = numInStock or 0
+		button.numInStock = numInStock
+		local text = part(button, "Stock", "Stock")
+		if not text then
+			return
+		end
+		if numInStock > 0 then
+			text:SetFormattedText(MERCHANT_STOCK, numInStock)
+			text:Show()
+		else
+			text:Hide()
+		end
+	end
+	_G.SetItemButtonTexture = function(button, texture)
+		if not button then
+			return
+		end
+		local icon = part(button, "icon", "IconTexture") or rawget(button, "Icon")
+		if not icon then
+			return
+		end
+		if texture then
+			icon:Show()
+		else
+			icon:Hide()
+		end
+		icon:SetTexture(texture)
+	end
+	_G.SetItemButtonTextureVertexColor = function(button, r, g, b)
+		local icon = button and (part(button, "icon", "IconTexture") or rawget(button, "Icon"))
+		if icon then
+			icon:SetVertexColor(r, g, b)
+		end
+	end
+	_G.SetItemButtonDesaturated = function(button, desaturated, r, g, b)
+		local icon = button and (part(button, "icon", "IconTexture") or rawget(button, "Icon"))
+		if not icon then
+			return
+		end
+		local shaderSupported = icon:SetDesaturated(desaturated)
+		if not desaturated then
+			r, g, b = 1, 1, 1
+		elseif not r or not shaderSupported then
+			r, g, b = 0.5, 0.5, 0.5
+		end
+		icon:SetVertexColor(r, g, b)
+	end
+	_G.SetItemButtonNormalTextureVertexColor = function(button, r, g, b)
+		local normal = button and (button.GetNormalTexture and button:GetNormalTexture() or part(button, "NormalTexture", "NormalTexture"))
+		if normal then
+			normal:SetVertexColor(r, g, b)
+		end
+	end
+	_G.SetItemButtonNameFrameVertexColor = function(button, r, g, b)
+		local frame = button and part(button, "NameFrame", "NameFrame")
+		if frame then
+			frame:SetVertexColor(r, g, b)
+		end
+	end
+	_G.SetItemButtonSlotVertexColor = function(button, r, g, b)
+		local slot = button and part(button, "SlotTexture", "SlotTexture")
+		if slot then
+			slot:SetVertexColor(r, g, b)
+		end
+	end
+end
+
+-- Frames, tables, money, misc -------------------------------------------------------------------------
+
+define("GetUnscaledFrameRect", function(frame, scale)
+	local left, bottom, width, height = frame:GetScaledRect()
+	if not left then
+		return 0, 0, 0, 0
+	end
+	scale = scale or 1
+	return left / scale, bottom / scale, width / scale, height / scale
+end)
+define("SetClampedTextureRotation", function(texture, rotation)
+	if rotation == 90 or rotation == 270 then
+		texture:SetTexCoord(rotation == 90 and 0 or 1, rotation == 90 and 1 or 0, 0, 1)
+	end
+end)
+define("FindValueInTableIf", function(tbl, pred)
+	for _, v in pairs(tbl) do
+		if pred(v) then
+			return v
+		end
+	end
+end)
+define("GetPairsArray", function(tbl)
+	local out = {}
+	for k, v in pairs(tbl) do
+		out[#out + 1] = { key = k, value = v }
+	end
+	return out
+end)
+define("GetMoneyTypeInfoField", function(moneyType, field)
+	local info = MoneyTypeInfo and MoneyTypeInfo[moneyType]
+	return info and info[field]
+end)
+define("GameTooltip_HideBattlePetTooltip", noop)
+define("InputScrollFrame_OnLoad", noop)
+define("StripHyperlinks", function(text)
+	text = tostring(text or "")
+	text = text:gsub("|H.-|h(.-)|h", "%1"):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", "")
+	return text
+end)
+define("CanEditGuildBankTabInfo", function(tab) return CanEditGuildTabInfo and CanEditGuildTabInfo(tab) end)
+define("SetLargeGuildTabardTextures", noop)
+define("SetSmallGuildTabardTextures", noop)
+define("GetBagSlotFlag", falseFn)
+define("GetBankBagSlotFlag", falseFn)
+define("GetReagentBankCost", function() return 0 end)
+define("DepositReagentBank", noop)
+define("IsVoidStorageReady", falseFn)
+define("UnlockVoidStorage", noop)
+define("ExecuteVoidTransfer", noop)
+define("GetVoidTransferCost", function() return 0 end)
+define("GetVoidTransferWithdrawalInfo", nilFn)
+define("ClickVoidTransferWithdrawalSlot", noop)
+define("ClickVoidStorageSlot", noop)
+define("GetCraftReagentItemLink", nilFn)
+define("IsKeyDown", function(key)
+	if key == "LSHIFT" or key == "RSHIFT" or key == "SHIFT" then return IsShiftKeyDown() end
+	if key == "LCTRL" or key == "RCTRL" or key == "CTRL" then return IsControlKeyDown() end
+	if key == "LALT" or key == "RALT" or key == "ALT" then return IsAltKeyDown() end
+	return false
+end)
+define("MuteSoundFile", noop)
+define("UnmuteSoundFile", noop)
+define("UnitDistanceSquared", function(unit)
+	local x1, y1, _, map1 = UnitPosition("player")
+	local x2, y2, _, map2 = UnitPosition(unit)
+	if not x1 or not x2 or map1 ~= map2 then
+		return 0, false
+	end
+	local dx, dy = x2 - x1, y2 - y1
+	return dx * dx + dy * dy, true
+end)
+define("IsInScenarioGroup", falseFn)
+define("InGuildParty", falseFn)
+define("UnitSpellTargetName", nilFn)
+define("UnitSpellTargetClass", nilFn)
+define("GetLootSpecialization", function() return 0 end)
+define("UnitPowerDisplayMod", function() return 1 end)
+define("GetUnitChargedPowerPoints", nilFn)
+define("GetUnitEmpowerStageDuration", function() return 0 end)
+define("FindSpellOverrideByID", function(spellID) return spellID end)
+define("FindBaseSpellByID", function(spellID) return spellID end)
+define("GetPvpTalentInfoByID", nilFn)
+define("GetPlayerFactionGroup", function() return UnitFactionGroup("player") end)
+define("UnitRealmRelationship", function() return 1 end)
+define("ClassicExpansionAtLeast", function(level) return (LE_EXPANSION_LEVEL_CURRENT or 2) >= level end)
+define("GetMaxLevelForExpansionLevel", function(level) return ({ [0] = 60, 70, 80 })[level] or 80 end)
+define("GetRelativeDifficultyColor", function(unitLevel, challengeLevel) return GetQuestDifficultyColor(challengeLevel) end)
+define("UnitIsGameObject", falseFn)
+define("UnitShouldDisplayName", function() return true end)
+define("GetSpellDescription", function(spellID)
+	local tip = ModernUI_GetScanTooltip and ModernUI_GetScanTooltip()
+	if not tip then
+		return ""
+	end
+	tip:SetHyperlink("spell:" .. spellID)
+	local lines = tip:NumLines()
+	local last = lines > 0 and _G[tip:GetName() .. "TextLeft" .. lines]
+	return last and last:GetText() or ""
+end)
+define("GetSpellBaseCooldown", function() return 0, 0 end)
+define("GetSpellCharges", nilFn)
+define("GetSpellPowerCost", function() return {} end)
+define("IsArtifactRelicItem", falseFn)
+define("GetFlyoutInfo", nilFn)
+define("GetFlyoutSlotInfo", nilFn)
+define("IsSubmerged", function() return IsSwimming() end)
+define("GetQuestID", function() return GetQuestLogSelection and select(9, GetQuestLogTitle(GetQuestLogSelection())) or 0 end)
+define("GetQuestObjectiveInfo", function(questID, index)
+	local logIndex = GetQuestLogIndexByID(questID)
+	if not logIndex then
+		return nil
+	end
+	local text, objectiveType, finished = GetQuestLogLeaderBoard(index, logIndex)
+	return text, objectiveType, finished
+end)
+define("GetQuestProgressBarPercent", function() return 0 end)
+define("IsQuestComplete", function(questID)
+	local logIndex = GetQuestLogIndexByID(questID)
+	return logIndex and select(7, GetQuestLogTitle(logIndex)) == 1 or false
+end)
+define("GameTooltip_SetTooltipWaitingForData", noop)
+define("GameTooltip_SetBottomText", noop)
+define("QuestUtils_GetQuestName", function(questID)
+	local logIndex = GetQuestLogIndexByID(questID)
+	return logIndex and GetQuestLogTitle(logIndex) or ""
+end)
+define("GetAppropriateTooltip", function() return GameTooltip end)
+define("DressUpVisual", function(link) if link then DressUpItemLink(link) end end)
+define("DressUpLink", function(link) if link then DressUpItemLink(link) end end)
+define("DressUpFrame_Show", function() ShowUIPanel(DressUpFrame) end)
+define("UpdateContainerFrameAnchors", function() if updateContainerFrameAnchors then updateContainerFrameAnchors() end end)
+define("SetPortraitTextureFromCreatureDisplayID", noop)
+define("SetBasicMessageDialogText", function(text) message(text) end)
+define("IsKeyPressIgnoredForBinding", falseFn)
+define("GetBindingName", function(binding) return _G["BINDING_NAME_" .. tostring(binding)] or binding end)
+define("SearchBoxTemplate_OnTextChanged", function(self)
+	local instructions = self.Instructions
+	if instructions then
+		if self:GetText() == "" then instructions:Show() else instructions:Hide() end
+	end
+	if self.clearButton then
+		if self:GetText() == "" then self.clearButton:Hide() else self.clearButton:Show() end
+	end
+end)
+define("SearchBoxTemplate_OnLoad", noop)
+define("SearchBoxTemplateClearButton_OnClick", function(self)
+	local box = self:GetParent()
+	box:SetText("")
+	box:ClearFocus()
+end)
+
+-- Strings -------------------------------------------------------------------------------------------------
+
+for name, value in pairs({
+	TOTAL = "Total", BANK = "Bank", EDIT = "Edit", VOID_STORAGE = "Void Storage", TRANSMOGRIFICATION = "Transmogrification",
+	PLAYER_TITLE_NONE = "No Title", CRITERIA_COMPLETED = "Completed", LOCK_FRAME = "Lock Frame", ITEM_UPGRADE_CURRENT = "Current",
+	ITEM_LEVEL_ABBR = "iLvl", STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF", UNIT_NAME_FONT = UNIT_NAME_FONT or "Fonts\\FRIZQT__.TTF",
+	DAMAGE_TEXT_FONT = DAMAGE_TEXT_FONT or "Fonts\\FRIZQT__.TTF", NAMEPLATE_FONT = NAMEPLATE_FONT or "Fonts\\FRIZQT__.TTF",
+	POWER_TYPE_MANA = MANA or "Mana", POWER_TYPE_FOCUS = FOCUS or "Focus", POWER_TYPE_ENERGY = ENERGY or "Energy",
+	POWER_TYPE_RED_POWER = RAGE or "Rage", POWER_TYPE_RUNIC_POWER = RUNIC_POWER or "Runic Power", COMBO_POINTS = COMBO_POINTS or "Combo Points",
+	CHI_POWER = "Chi", HOLY_POWER = "Holy Power", SOUL_SHARDS_POWER = "Soul Shards", POWER_TYPE_LUNAR_POWER = "Astral Power",
+	POWER_TYPE_MAELSTROM = "Maelstrom", POWER_TYPE_INSANITY = "Insanity", POWER_TYPE_ARCANE_CHARGES = "Arcane Charges",
+	POWER_TYPE_FURY_DEMONHUNTER = "Fury", POWER_TYPE_PAIN = "Pain", POWER_TYPE_ESSENCE = "Essence", STAGGER = "Stagger",
+	BONUS_OBJECTIVE_TIME_LEFT = "Time Left: %s", REPUTATION_TOOLTIP_ACCOUNT_WIDE_LABEL = "Account-wide",
+	CLUB_FINDER_APPLICANT_LIST_NO_MATCHING_SPECS = "None", PLAYER_DIFFICULTY_STORY_RAID = "Story",
+}) do
+	define(name, value)
+end
+define("LE_MODEL_BLEND_OPERATION_NONE", 0)
+define("CAMERA_TRANSITION_TYPE_IMMEDIATE", 1)
+define("CAMERA_TRANSITION_TYPE_INTERPOLATION", 2)
+define("ACCOUNT_WIDE_FONT_COLOR", CreateColor(0, 0.8, 1))
