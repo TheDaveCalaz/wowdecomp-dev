@@ -1,5 +1,6 @@
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include "Engine/Source/Frame/CScriptRegion.h"
 #include "Engine/Source/Base/Coordinate.h"
 #include "Engine/Source/Base/Status.h"
@@ -107,6 +108,69 @@ CLayoutFrame* CScriptRegion::GetLayoutFrameByName(const char* name) {
 
     CScriptRegion* region = static_cast<CScriptRegion*>(CScriptObject::GetScriptObjectByName(fullName, CScriptRegion::GetObjectType()));
     return region;
+}
+
+// ModernUI: walks a key path from this region: "$parent" steps to the parent, any other part reads
+// that key from the current object's Lua table ("$parent.$parent.Title", "$parent.ScrollBar").
+CLayoutFrame* CScriptRegion::GetLayoutFrameByKey(const char* path) {
+    lua_State* L = FrameScript_GetContext();
+    CScriptObject* current = this;
+    char part[256];
+    const char* cursor = path;
+    int32_t top = lua_gettop(L);
+
+    while (cursor && *cursor && current) {
+        const char* dot = SStrChr(cursor, '.');
+        size_t length = dot ? static_cast<size_t>(dot - cursor) : SStrLen(cursor);
+
+        if (length >= sizeof(part)) {
+            current = nullptr;
+            break;
+        }
+
+        memcpy(part, cursor, length);
+        part[length] = '\0';
+        cursor = dot ? dot + 1 : nullptr;
+
+        if (!part[0]) {
+            continue;
+        }
+
+        if (!SStrCmpI(part, "$parent", STORM_MAX_STR)) {
+            current = current->GetScriptObjectParent();
+            continue;
+        }
+
+        if (!current->m_luaRegistered) {
+            current->RegisterScriptObject(nullptr);
+        }
+
+        lua_rawgeti(L, LUA_REGISTRYINDEX, current->m_luaObjectRef);
+
+        if (!lua_istable(L, -1)) {
+            current = nullptr;
+            break;
+        }
+
+        lua_getfield(L, -1, part);
+
+        if (!lua_istable(L, -1)) {
+            current = nullptr;
+            break;
+        }
+
+        lua_rawgeti(L, -1, 0);
+        current = static_cast<CScriptObject*>(lua_touserdata(L, -1));
+        lua_settop(L, top);
+    }
+
+    lua_settop(L, top);
+
+    if (!current || !current->IsA(CScriptRegion::GetObjectType())) {
+        return nullptr;
+    }
+
+    return static_cast<CScriptRegion*>(current);
 }
 
 // VERIFY: 6a00f6bb manual

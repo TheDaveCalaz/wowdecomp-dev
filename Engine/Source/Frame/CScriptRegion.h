@@ -48,6 +48,7 @@ class CScriptRegion : public CScriptObject, public CLayoutFrame {
     void LoadXML_Modern(XMLNode* node, CStatus* status); // not in the original
     virtual CLayoutFrame* GetLayoutParent();
     virtual CLayoutFrame* GetLayoutFrameByName(const char* name);
+    virtual CLayoutFrame* GetLayoutFrameByKey(const char* path);
 
     CScriptRegion();
     void GetActiveAnimInfo(int32_t type, int32_t& active, int32_t& activeOfType);

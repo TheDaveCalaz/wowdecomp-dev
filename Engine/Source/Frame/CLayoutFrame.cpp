@@ -1390,8 +1390,24 @@ void CLayoutFrame::LoadXML(XMLNode* node, CStatus* status) {
         }
 
         const char* relativeTo = anchor->GetAttributeByName("relativeTo");
+        const char* relativeKey = anchor->GetAttributeByName("relativeKey");
 
-        if (relativeTo && *relativeTo) {
+        // ModernUI: modern anchors name the frame they hang from by key path ("$parent.Header").
+        if (relativeKey && *relativeKey && !(relativeTo && *relativeTo)) {
+            CLayoutFrame* keyed = this->GetLayoutFrameByKey(relativeKey);
+
+            if (!keyed) {
+                status->Add(STATUS_WARNING, "Couldn't find relative key: %s", relativeKey);
+                continue;
+            }
+
+            if (keyed == this) {
+                status->Add(STATUS_WARNING, "Frame anchored to itself: %s", relativeKey);
+                continue;
+            }
+
+            relative = keyed;
+        } else if (relativeTo && *relativeTo) {
             relative = this->GetLayoutFrameByName(relativeTo);
 
             if (!relative) {
@@ -1431,6 +1447,10 @@ int32_t CLayoutFrame::IsAttachmentOrigin() {
 }
 
 CLayoutFrame* CLayoutFrame::GetLayoutFrameByName(const char* name) {
+    return nullptr;
+}
+
+CLayoutFrame* CLayoutFrame::GetLayoutFrameByKey(const char* path) {
     return nullptr;
 }
 

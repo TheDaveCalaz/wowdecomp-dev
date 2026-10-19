@@ -62,6 +62,8 @@ class CLayoutFrame {
     virtual CLayoutFrame* GetLayoutFrameByName(const char* name);
     virtual int32_t IsObjectLoaded();
     virtual void OnFrameSizeChanged(const CRect& rect);
+    // ModernUI: the frame a modern anchor's relativeKey ("$parent.Header") names; none by default.
+    virtual CLayoutFrame* GetLayoutFrameByKey(const char* path);
 
     CLayoutFrame();
     void AddToResizeList();
