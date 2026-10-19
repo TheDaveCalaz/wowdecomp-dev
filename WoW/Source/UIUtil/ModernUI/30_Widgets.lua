@@ -1007,3 +1007,197 @@ for _, kind in ipairs({ "Model", "PlayerModel", "DressUpModel", "TabardModel" })
 	addTo(kind, "SetModelDrawLayer", noop)
 	addTo(kind, "GetModelDrawLayer", function() return "ARTWORK", 0 end)
 end
+
+-- Animations aimed at a child --------------------------------------------------------------------
+-- Modern animations can animate a child of the group's region (SetChildKey, SetTargetKey, SetTarget,
+-- childKey= in XML); 3.3.5 animations always move the region that owns the group. An alpha animation
+-- with a target is played here by setting the target's alpha as it runs, and leaves the owner alone.
+
+do
+	local function targetOf(anim)
+		local s = stateOf(anim)
+		if s.target then
+			return s.target
+		end
+		local key = s.childKey or s.targetKey
+		if key then
+			local group = anim:GetParent()
+			local owner = group and group:GetParent()
+			local target = owner
+			for part in key:gmatch("[^%.]+") do
+				if part == "$parent" then
+					target = target and target:GetParent()
+				else
+					target = target and target[part]
+				end
+			end
+			return target
+		end
+	end
+
+	local function aim(anim)
+		local s = stateOf(anim)
+		if s.aimed then
+			return
+		end
+		s.aimed = true
+		if anim.SetChange then
+			anim:SetChange(0)
+		end
+		local function update(self)
+			local target = targetOf(self)
+			if target and target.SetAlpha then
+				local st = stateOf(self)
+				local from, to = st.fromAlpha or 0, st.toAlpha or 1
+				local progress = self.GetSmoothProgress and self:GetSmoothProgress() or self:GetProgress() or 0
+				target:SetAlpha(from + (to - from) * progress)
+			end
+		end
+		local function play(self)
+			local target = targetOf(self)
+			if target and target.SetAlpha then
+				local st = stateOf(self)
+				st.restoreAlpha = target:GetAlpha()
+				target:SetAlpha(st.fromAlpha or 0)
+			end
+		end
+		local function finish(self)
+			local target = targetOf(self)
+			if target and target.SetAlpha then
+				local st = stateOf(self)
+				local group = self:GetParent()
+				if group and stateOf(group).toFinalAlpha then
+					target:SetAlpha(st.toAlpha or 1)
+				elseif st.restoreAlpha then
+					target:SetAlpha(st.restoreAlpha)
+				end
+			end
+		end
+		for script, func in pairs({ OnUpdate = update, OnPlay = play, OnFinished = finish, OnStop = finish }) do
+			if anim.HookScript then
+				anim:HookScript(script, func)
+			else
+				anim:SetScript(script, func)
+			end
+		end
+	end
+
+	local alpha = methodTables.Alpha
+	if alpha then
+		local SetChange = alpha.SetChange
+		alpha.SetChildKey = function(self, key) stateOf(self).childKey = key aim(self) end
+		alpha.SetTargetKey = function(self, key) stateOf(self).targetKey = key aim(self) end
+		alpha.SetTarget = function(self, target) stateOf(self).target = target aim(self) end
+		alpha.SetTargetName = function(self, name) stateOf(self).target = _G[name] aim(self) end
+		alpha.GetTarget = function(self) return targetOf(self) or self:GetRegionParent() end
+		-- Keep the owner still once the animation is aimed at a child.
+		alpha.SetFromAlpha = function(self, value)
+			local s = stateOf(self)
+			s.fromAlpha = value
+			if not s.aimed then
+				SetChange(self, (s.toAlpha or 1) - (s.fromAlpha or 0))
+			end
+		end
+		alpha.SetToAlpha = function(self, value)
+			local s = stateOf(self)
+			s.toAlpha = value
+			if not s.aimed then
+				SetChange(self, (s.toAlpha or 1) - (s.fromAlpha or 0))
+			end
+		end
+	end
+	local group = methodTables.AnimationGroup
+	if group then
+		group.SetToFinalAlpha = function(self, final) stateOf(self).toFinalAlpha = final and true or false end
+		group.IsSetToFinalAlpha = function(self) return stateOf(self).toFinalAlpha == true end
+	end
+	_G.ModernUI_AimAnimation = function(anim, childKey)
+		stateOf(anim).childKey = childKey
+		aim(anim)
+	end
+end
+
+-- Item buttons -----------------------------------------------------------------------------------
+-- Modern bag and item buttons carry parts by key (IconBorder, NewItemTexture, BattlepayItemTexture,
+-- JunkIcon, UpgradeIcon...) that the 3.3.5 templates lack; they are added, hidden, when such a
+-- button is created.
+
+local function texture(button, layer, sublevel, file, blend)
+	local t = button:CreateTexture(nil, layer, nil, sublevel)
+	if file then
+		t:SetTexture(file)
+	end
+	if blend then
+		t:SetBlendMode(blend)
+	end
+	t:Hide()
+	return t
+end
+
+local function modernItemButton(button)
+	if rawget(button, "IconBorder") then
+		return
+	end
+	local name = button:GetName()
+	if name then
+		button.icon = button.icon or _G[name .. "IconTexture"]
+		button.Count = button.Count or _G[name .. "Count"]
+		button.Cooldown = button.Cooldown or _G[name .. "Cooldown"]
+		button.IconQuestTexture = button.IconQuestTexture or _G[name .. "IconQuestTexture"]
+		button.searchOverlay = button.searchOverlay or _G[name .. "SearchOverlay"]
+		button.Stock = button.Stock or _G[name .. "Stock"]
+	end
+	if not button.IconQuestTexture then
+		button.IconQuestTexture = texture(button, "OVERLAY", 2)
+		button.IconQuestTexture:SetAllPoints()
+	end
+	button.IconBorder = texture(button, "OVERLAY", 0, "Interface\\Buttons\\UI-ActionButton-Border", "ADD")
+	button.IconBorder:SetPoint("CENTER")
+	button.IconBorder:SetWidth(button:GetWidth() * 1.8)
+	button.IconBorder:SetHeight(button:GetHeight() * 1.8)
+	button.IconOverlay = texture(button, "OVERLAY", 1)
+	button.IconOverlay:SetAllPoints()
+	button.IconOverlay2 = texture(button, "OVERLAY", 2)
+	button.IconOverlay2:SetAllPoints()
+	button.NewItemTexture = texture(button, "OVERLAY", 1, "Interface\\Buttons\\UI-ActionButton-Border", "ADD")
+	button.NewItemTexture:SetPoint("CENTER")
+	button.NewItemTexture:SetWidth(button:GetWidth() * 1.8)
+	button.NewItemTexture:SetHeight(button:GetHeight() * 1.8)
+	button.BattlepayItemTexture = texture(button, "OVERLAY", 1)
+	button.BattlepayItemTexture:SetAllPoints()
+	button.JunkIcon = texture(button, "OVERLAY", 3, "Interface\\Buttons\\UI-GroupLoot-Coin-Up")
+	button.JunkIcon:SetPoint("TOPLEFT", 1, -1)
+	button.JunkIcon:SetWidth(12)
+	button.JunkIcon:SetHeight(12)
+	button.UpgradeIcon = texture(button, "OVERLAY", 3, "Interface\\Buttons\\UI-MicroStream-Green")
+	button.UpgradeIcon:SetPoint("TOPLEFT", 0, 0)
+	button.UpgradeIcon:SetWidth(14)
+	button.UpgradeIcon:SetHeight(14)
+	button.ItemContextOverlay = texture(button, "OVERLAY", 4)
+	button.ItemContextOverlay:SetAllPoints()
+	button.flash = texture(button, "OVERLAY", 2, "Interface\\Buttons\\UI-ActionButton-Border", "ADD")
+	button.flash:SetPoint("CENTER")
+	button.flash:SetWidth(button:GetWidth() * 1.8)
+	button.flash:SetHeight(button:GetHeight() * 1.8)
+	button.flashAnim = button:CreateAnimationGroup()
+	button.newitemglowAnim = button:CreateAnimationGroup()
+end
+_G.ModernUI_ModernItemButton = modernItemButton
+
+do
+	local itemTemplates = { "ContainerFrameItemButtonTemplate", "ItemButtonTemplate", "BankItemButtonGenericTemplate", "MerchantItemButtonTemplate" }
+	local wrappedCreateFrame = _G.CreateFrame
+	_G.CreateFrame = function(frameType, name, parent, template, ...)
+		local frame = wrappedCreateFrame(frameType, name, parent, template, ...)
+		if frame and (frameType == "ItemButton" or (type(template) == "string" and (function()
+			for _, t in ipairs(itemTemplates) do
+				if template:find(t, 1, true) then
+					return true
+				end
+			end
+		end)())) then
+			modernItemButton(frame)
+		end
+		return frame
+	end
+end

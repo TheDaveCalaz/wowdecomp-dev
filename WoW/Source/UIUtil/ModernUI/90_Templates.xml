@@ -228,4 +228,63 @@
 
 	<!-- A plain stretchable button. -->
 	<Button name="UIMenuButtonStretchTemplate" inherits="UIPanelButtonTemplate" virtual="true"/>
+
+	<!-- Nine-slice frames: a backdrop the modern NineSlice layouts are applied to. -->
+	<Frame name="NineSliceCodeTemplate" virtual="true" mixin="NineSlicePanelMixin">
+		<Scripts>
+			<OnLoad>
+				if self.layoutType and NineSliceUtil then
+					NineSliceUtil.ApplyLayoutByName(self, self.layoutType)
+				end
+			</OnLoad>
+		</Scripts>
+	</Frame>
+	<Frame name="NineSlicePanelTemplate" inherits="NineSliceCodeTemplate" virtual="true"/>
+
+	<!-- Minimise / maximise button pair (the methods come from MaximizeMinimizeButtonFrameMixin). -->
+	<Frame name="MaximizeMinimizeButtonFrameTemplate" virtual="true" mixin="MaximizeMinimizeButtonFrameMixin">
+		<Size><AbsDimension x="32" y="32"/></Size>
+		<Frames>
+			<Button name="$parentMaximizeButton" parentKey="MaximizeButton" hidden="true">
+				<Size><AbsDimension x="32" y="32"/></Size>
+				<Anchors><Anchor point="CENTER"/></Anchors>
+				<NormalTexture file="Interface\Buttons\UI-Panel-BiggerButton-Up"/>
+				<PushedTexture file="Interface\Buttons\UI-Panel-BiggerButton-Down"/>
+				<HighlightTexture file="Interface\Buttons\UI-Panel-MinimizeButton-Highlight" alphaMode="ADD"/>
+				<Scripts>
+					<OnClick>
+						PlaySound("igMainMenuOptionCheckBoxOn")
+						self:GetParent():Maximize()
+					</OnClick>
+				</Scripts>
+			</Button>
+			<Button name="$parentMinimizeButton" parentKey="MinimizeButton">
+				<Size><AbsDimension x="32" y="32"/></Size>
+				<Anchors><Anchor point="CENTER"/></Anchors>
+				<NormalTexture file="Interface\Buttons\UI-Panel-SmallerButton-Up"/>
+				<PushedTexture file="Interface\Buttons\UI-Panel-SmallerButton-Down"/>
+				<HighlightTexture file="Interface\Buttons\UI-Panel-MinimizeButton-Highlight" alphaMode="ADD"/>
+				<Scripts>
+					<OnClick>
+						PlaySound("igMainMenuOptionCheckBoxOn")
+						self:GetParent():Minimize()
+					</OnClick>
+				</Scripts>
+			</Button>
+		</Frames>
+		<Scripts>
+			<OnShow>
+				if self.isMinimized then self:SetMinimizedLook() else self:SetMaximizedLook() end
+			</OnShow>
+		</Scripts>
+	</Frame>
+
+	<!-- Close button variants. -->
+	<Button name="UIPanelCloseButtonNoScripts" inherits="UIPanelCloseButton" virtual="true"/>
+	<Button name="UIPanelCloseButtonDefaultAnchors" inherits="UIPanelCloseButton" virtual="true">
+		<Anchors>
+			<Anchor point="TOPRIGHT"><Offset><AbsDimension x="-3" y="-3"/></Offset></Anchor>
+		</Anchors>
+	</Button>
+	<Button name="UIPanelButtonNoTooltipTemplate" inherits="UIPanelButtonTemplate" virtual="true"/>
 </Ui>

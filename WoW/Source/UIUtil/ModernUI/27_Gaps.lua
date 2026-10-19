@@ -527,3 +527,89 @@ do
 	set("GetSectionInfo", nilFn)
 	set("GetEncounterJournalLink", nilFn)
 end
+
+-- Bags and item buttons ---------------------------------------------------------------------------------
+
+do
+	local set = namespace("C_NewItems")
+	set("IsNewItem", falseFn)
+	set("RemoveNewItem", noop)
+	set("ClearAll", noop)
+end
+do
+	local set = namespace("C_Container")
+	set("IsBattlePayItem", falseFn)
+end
+
+define("SetItemButtonQuality", function(button, quality, itemIDOrLink)
+	local border = button and button.IconBorder
+	if not border then
+		return
+	end
+	if quality and quality >= 2 and ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[quality] then
+		local c = ITEM_QUALITY_COLORS[quality]
+		border:SetVertexColor(c.r, c.g, c.b)
+		border:Show()
+	else
+		border:Hide()
+	end
+end)
+define("ClearItemButtonOverlay", function(button)
+	if button.IconOverlay then button.IconOverlay:Hide() end
+	if button.IconOverlay2 then button.IconOverlay2:Hide() end
+end)
+define("SetItemButtonOverlay", noop)
+define("ContainerFrameUtil_ConvertFilterFlagsToList", function() return {} end)
+define("GetValueOrCallFunction", function(tbl, key, ...)
+	local value = tbl[key]
+	if type(value) == "function" then
+		return value(...)
+	end
+	return value
+end)
+
+-- Minimise / maximise button pair ------------------------------------------------------------------
+
+if _G.MaximizeMinimizeButtonFrameMixin == nil then
+	local mixin = {}
+	function mixin:OnShow()
+		if self.isMinimized then self:SetMinimizedLook() else self:SetMaximizedLook() end
+	end
+	function mixin:SetOnMaximizedCallback(callback) self.maximizedCallback = callback end
+	function mixin:SetOnMinimizedCallback(callback) self.minimizedCallback = callback end
+	function mixin:IsMinimized() return self.isMinimized == true end
+	function mixin:Maximize(skipCallback)
+		self.isMinimized = false
+		if self.maximizedCallback and not skipCallback then self.maximizedCallback(self) end
+		self:SetMaximizedLook()
+	end
+	function mixin:Minimize(skipCallback)
+		self.isMinimized = true
+		if self.minimizedCallback and not skipCallback then self.minimizedCallback(self) end
+		self:SetMinimizedLook()
+	end
+	function mixin:SetMinimizedLook()
+		if self.MaximizeButton then self.MaximizeButton:Show() end
+		if self.MinimizeButton then self.MinimizeButton:Hide() end
+	end
+	function mixin:SetMaximizedLook()
+		if self.MaximizeButton then self.MaximizeButton:Hide() end
+		if self.MinimizeButton then self.MinimizeButton:Show() end
+	end
+	_G.MaximizeMinimizeButtonFrameMixin = mixin
+end
+
+-- Scrolling edit boxes: an edit box whose cursor has not moved yet has no cursor offset, and the
+-- 3.3.5 update then fails every frame. Start it at the top.
+if ScrollingEdit_OnUpdate then
+	local ScrollingEdit_OnUpdate_335 = ScrollingEdit_OnUpdate
+	_G.ScrollingEdit_OnUpdate = function(self, elapsed, scrollFrame)
+		if self.cursorOffset == nil then
+			self.cursorOffset = 0
+		end
+		if self.cursorHeight == nil then
+			self.cursorHeight = 0
+		end
+		return ScrollingEdit_OnUpdate_335(self, elapsed, scrollFrame)
+	end
+end
