@@ -83,14 +83,33 @@
 		</Scripts>
 	</Button>
 
-	<!-- Window with a dialog border, a portrait, a title and a close button. -->
-	<Frame name="PortraitFrameTemplate" virtual="true" toplevel="true" enableMouse="true">
+	<!-- Window with a dialog border, a portrait, a title and a close button. The parts carry the modern
+	     keys (Bg, TitleBg, TitleContainer, TitleText, portrait, PortraitContainer, CloseButton) and the
+	     methods come from PortraitFrameMixin, so they survive a frame that replaces OnLoad. -->
+	<Frame name="PortraitFrameTemplate" virtual="true" toplevel="true" enableMouse="true" mixin="PortraitFrameMixin">
 		<Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
 			<EdgeSize><AbsValue val="32"/></EdgeSize>
 			<TileSize><AbsValue val="32"/></TileSize>
 			<BackgroundInsets><AbsInset left="11" right="12" top="12" bottom="11"/></BackgroundInsets>
 		</Backdrop>
 		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture name="$parentBg" parentKey="Bg">
+					<Anchors>
+						<Anchor point="TOPLEFT"><Offset><AbsDimension x="11" y="-12"/></Offset></Anchor>
+						<Anchor point="BOTTOMRIGHT"><Offset><AbsDimension x="-12" y="11"/></Offset></Anchor>
+					</Anchors>
+				</Texture>
+			</Layer>
+			<Layer level="BORDER">
+				<Texture name="$parentTitleBg" parentKey="TitleBg">
+					<Size><AbsDimension x="0" y="20"/></Size>
+					<Anchors>
+						<Anchor point="TOPLEFT"><Offset><AbsDimension x="11" y="-12"/></Offset></Anchor>
+						<Anchor point="TOPRIGHT"><Offset><AbsDimension x="-12" y="-12"/></Offset></Anchor>
+					</Anchors>
+				</Texture>
+			</Layer>
 			<Layer level="OVERLAY">
 				<Texture name="$parentPortrait" parentKey="portrait">
 					<Size><AbsDimension x="58" y="58"/></Size>
@@ -100,12 +119,19 @@
 				</Texture>
 				<FontString name="$parentTitleText" parentKey="TitleText" inherits="GameFontNormal">
 					<Anchors>
-						<Anchor point="TOP"><Offset><AbsDimension x="0" y="-14"/></Offset></Anchor>
+						<Anchor point="TOP"><Offset><AbsDimension x="0" y="-16"/></Offset></Anchor>
 					</Anchors>
 				</FontString>
 			</Layer>
 		</Layers>
 		<Frames>
+			<Frame name="$parentTitleContainer" parentKey="TitleContainer">
+				<Size><AbsDimension x="0" y="20"/></Size>
+				<Anchors>
+					<Anchor point="TOPLEFT"><Offset><AbsDimension x="58" y="-12"/></Offset></Anchor>
+					<Anchor point="TOPRIGHT"><Offset><AbsDimension x="-30" y="-12"/></Offset></Anchor>
+				</Anchors>
+			</Frame>
 			<Button name="$parentCloseButton" parentKey="CloseButton" inherits="UIPanelCloseButton">
 				<Anchors>
 					<Anchor point="TOPRIGHT"><Offset><AbsDimension x="-3" y="-3"/></Offset></Anchor>
@@ -114,25 +140,39 @@
 		</Frames>
 		<Scripts>
 			<OnLoad>
-				self.PortraitContainer = { portrait = self.portrait }
-				self.SetTitle = self.SetTitle or function(frame, title) frame.TitleText:SetText(title) end
-				self.SetPortraitToAsset = self.SetPortraitToAsset or function(frame, texture) SetPortraitToTexture(frame.portrait, texture) end
-				self.SetPortraitTextureRaw = self.SetPortraitTextureRaw or function(frame, texture) frame.portrait:SetTexture(texture) end
-				self.SetPortraitShown = self.SetPortraitShown or function(frame, shown) if shown then frame.portrait:Show() else frame.portrait:Hide() end end
+				self.PortraitContainer = self.PortraitContainer or { portrait = self.portrait }
+				if self.TitleContainer then
+					self.TitleContainer.TitleText = self.TitleText
+				end
 			</OnLoad>
 		</Scripts>
 	</Frame>
 
-	<Frame name="ButtonFrameTemplate" inherits="PortraitFrameTemplate" virtual="true"/>
+	<Frame name="ButtonFrameTemplate" inherits="PortraitFrameTemplate" virtual="true">
+		<Frames>
+			<Frame name="$parentInset" parentKey="Inset" inherits="InsetFrameTemplate">
+				<Anchors>
+					<Anchor point="TOPLEFT"><Offset><AbsDimension x="14" y="-60"/></Offset></Anchor>
+					<Anchor point="BOTTOMRIGHT"><Offset><AbsDimension x="-14" y="26"/></Offset></Anchor>
+				</Anchors>
+			</Frame>
+		</Frames>
+	</Frame>
+	<Frame name="PortraitFrameTexturedBaseTemplate" inherits="PortraitFrameTemplate" virtual="true"/>
+	<Frame name="ButtonFrameTemplateMinimizable" inherits="ButtonFrameTemplate" virtual="true"/>
 	<Frame name="DefaultPanelTemplate" inherits="PortraitFrameTemplate" virtual="true">
 		<Scripts>
 			<OnLoad>
 				self.portrait:Hide()
 				self.PortraitContainer = { portrait = self.portrait }
-				self.SetTitle = self.SetTitle or function(frame, title) frame.TitleText:SetText(title) end
+				if self.TitleContainer then
+					self.TitleContainer.TitleText = self.TitleText
+				end
 			</OnLoad>
 		</Scripts>
 	</Frame>
+	<Frame name="DefaultPanelFlatTemplate" inherits="DefaultPanelTemplate" virtual="true"/>
+	<Frame name="DefaultPanelBaseTemplate" inherits="DefaultPanelTemplate" virtual="true"/>
 	<Frame name="BasicFrameTemplate" inherits="DefaultPanelTemplate" virtual="true"/>
 	<Frame name="BasicFrameTemplateWithInset" inherits="DefaultPanelTemplate" virtual="true"/>
 

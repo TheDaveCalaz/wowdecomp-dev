@@ -113,7 +113,9 @@ bool Script_GetGUIDFromToken(const char* token, WOWGUID& guid, bool defaultToTar
 
     if (!SStrCmpI(token, "player", 6)) {
         token += 6;
-        guid = player ? player->m_obj->m_guid : WOWGUID();
+        // ModernUI: before the player object exists (while AddOns load) the active player's GUID is
+        // already known; modern addons read UnitGUID("player") at that point.
+        guid = player ? player->m_obj->m_guid : ClntObjMgrGetActivePlayer();
     } else if (!SStrCmpI(token, "vehicle", 7)) {
         token += 7;
         guid = player && player->IsSeatedInVehicle() ? WOWGUID { player->GetTransportGUID() } : WOWGUID();

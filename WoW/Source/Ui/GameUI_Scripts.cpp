@@ -1769,8 +1769,10 @@ static int32_t Script_GetCVarDefault(lua_State* L) {
     CVar* var = CVar::LookupRegistered(lua_tolstring(L, 1, nullptr));
 
     if (!var || (var->m_flags & 0x40)) {
-        luaL_error(L, "Couldn't find CVar named '%s'", lua_tolstring(L, 1, nullptr));
-        return 0;
+        // ModernUI: a CVar this client lacks reads as nil (or fails to set) instead of raising an error,
+        // as in the modern clients, so addons that touch newer CVars carry on.
+        lua_pushnil(L);
+        return 1;
     }
 
     lua_pushstring(L, var->m_defaultValue.m_str);
@@ -1855,8 +1857,10 @@ static int32_t Script_SetCVar(lua_State* L) {
     CVar* var = CVar::LookupRegistered(name);
 
     if (!var || (var->m_flags & 0x40)) {
-        luaL_error(L, "Couldn't find CVar named '%s'", name);
-        return 0;
+        // ModernUI: a CVar this client lacks reads as nil (or fails to set) instead of raising an error,
+        // as in the modern clients, so addons that touch newer CVars carry on.
+        lua_pushnil(L);
+        return 1;
     }
 
     if ((var->m_flags & 0x4) || (var->m_flags & 0x100)) {
@@ -1895,8 +1899,10 @@ static int32_t Script_GetCVarMin(lua_State* L) {
     CVar* var = CVar::LookupRegistered(lua_tolstring(L, 1, nullptr));
 
     if (!var || (var->m_flags & 0x40)) {
-        luaL_error(L, "Couldn't find CVar named '%s'", lua_tolstring(L, 1, nullptr));
-        return 0;
+        // ModernUI: a CVar this client lacks reads as nil (or fails to set) instead of raising an error,
+        // as in the modern clients, so addons that touch newer CVars carry on.
+        lua_pushnil(L);
+        return 1;
     }
 
     const char* name = var->m_key.m_str;
@@ -1923,8 +1929,10 @@ static int32_t Script_GetCVarMax(lua_State* L) {
     CVar* var = CVar::LookupRegistered(lua_tolstring(L, 1, nullptr));
 
     if (!var || (var->m_flags & 0x40)) {
-        luaL_error(L, "Couldn't find CVar named '%s'", lua_tolstring(L, 1, nullptr));
-        return 0;
+        // ModernUI: a CVar this client lacks reads as nil (or fails to set) instead of raising an error,
+        // as in the modern clients, so addons that touch newer CVars carry on.
+        lua_pushnil(L);
+        return 1;
     }
 
     const char* name = var->m_key.m_str;
@@ -4125,8 +4133,10 @@ static int32_t Script_GetCVarAbsoluteMin(lua_State* L) {
     CVar* var = CVar::LookupRegistered(lua_tolstring(L, 1, nullptr));
 
     if (!var || (var->m_flags & 0x40)) {
-        luaL_error(L, "Couldn't find CVar named '%s'", lua_tolstring(L, 1, nullptr));
-        return 0;
+        // ModernUI: a CVar this client lacks reads as nil (or fails to set) instead of raising an error,
+        // as in the modern clients, so addons that touch newer CVars carry on.
+        lua_pushnil(L);
+        return 1;
     }
 
     if (SStrCmpI(var->m_key.m_str, "extShadowQuality", STORM_MAX_STR)) {
@@ -4149,8 +4159,10 @@ static int32_t Script_GetCVarAbsoluteMax(lua_State* L) {
     CVar* var = CVar::LookupRegistered(lua_tolstring(L, 1, nullptr));
 
     if (!var || (var->m_flags & 0x40)) {
-        luaL_error(L, "Couldn't find CVar named '%s'", lua_tolstring(L, 1, nullptr));
-        return 0;
+        // ModernUI: a CVar this client lacks reads as nil (or fails to set) instead of raising an error,
+        // as in the modern clients, so addons that touch newer CVars carry on.
+        lua_pushnil(L);
+        return 1;
     }
 
     if (SStrCmpI(var->m_key.m_str, "extShadowQuality", STORM_MAX_STR)) {

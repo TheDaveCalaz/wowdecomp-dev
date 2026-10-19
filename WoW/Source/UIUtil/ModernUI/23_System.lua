@@ -30,8 +30,12 @@ do
 	local set = namespace("C_AddOns")
 
 	-- Retail swapped the argument order of the enable-state call; accept both.
+	local function exists(addon)
+		local ok, name, _, _, _, _, reason = pcall(GetAddOnInfo, addon)
+		return ok and name ~= nil and reason ~= "MISSING"
+	end
 	local function addonArgs(a, b)
-		if b ~= nil and type(a) == "string" and GetAddOnInfo(b) and (select(6, GetAddOnInfo(b))) ~= "MISSING" then
+		if b ~= nil and type(a) == "string" and exists(b) and not exists(a) then
 			return b, a
 		end
 		return a, b
@@ -67,6 +71,9 @@ do
 	set("DisableAllAddOns", function(character) DisableAllAddOns(character) end)
 	set("GetAddOnEnableState", function(a, b)
 		local addon = addonArgs(a, b)
+		if not exists(addon) then
+			return Enum.AddOnEnableState.None
+		end
 		local _, _, _, enabled = GetAddOnInfo(addon)
 		return enabled and Enum.AddOnEnableState.All or Enum.AddOnEnableState.None
 	end)

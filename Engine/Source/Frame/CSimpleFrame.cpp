@@ -1313,6 +1313,18 @@ void CSimpleFrame::PreLoadXML(XMLNode* node, CStatus* status) {
 
     if (name && *name) {
         this->SetName(name);
+    } else {
+        // ModernUI: the 3.3.5 scroll frame, scroll bar and dropdown templates find their parts by the
+        // frame's name ($parentScrollBar...). Modern addons create these frames without a name, which
+        // made their OnLoad fail; such a frame is given a generated name so the templates work.
+        const char* inherits = node->GetAttributeByName("inherits");
+
+        if (inherits && (SStrStrI(inherits, "ScrollFrameTemplate") || SStrStrI(inherits, "ScrollBarTemplate") || SStrStrI(inherits, "UIDropDownMenuTemplate"))) {
+            static uint32_t s_generated = 0;
+            char generated[64];
+            SStrPrintf(generated, sizeof(generated), "ModernUIFrame%u", ++s_generated);
+            this->SetName(generated);
+        }
     }
 
     const char* id = node->GetAttributeByName("id");

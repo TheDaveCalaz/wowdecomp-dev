@@ -718,8 +718,12 @@ static int32_t Script_strlenutf8(lua_State* L) {
 // VERIFY: 28a509c4 auto
 // OFFSET: 0x00819A60
 static int32_t Script_debuglocals(lua_State* L) {
+    // ModernUI: outside the client's own error handler (an addon calling the error handler itself,
+    // as many do through xpcall) this returned nothing, and the error window's format() then failed
+    // inside error handling, recursing to a C stack overflow. An empty string keeps it working.
     if (!s_inErrorHandler) {
-        return 0;
+        lua_pushstring(L, "");
+        return 1;
     }
 
     int32_t level = lua_tonumber(L, 1);

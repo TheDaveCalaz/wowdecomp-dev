@@ -858,3 +858,141 @@ if _G.NineSlicePanelMixin == nil then
 		GetBorderColor = function(self) if self.GetBackdropBorderColor then return self:GetBackdropBorderColor() end return 1, 1, 1, 1 end,
 	}
 end
+
+-- Script handlers this client does not have -------------------------------------------------------
+-- Setting a handler the client does not know (OnModelLoaded, OnEnable, OnSizeChanged on a region...)
+-- raised an error. The handler is kept instead, so GetScript returns it, and the ones that can be
+-- driven from Lua are: OnModelLoaded runs after a model is set.
+
+local extraScripts = setmetatable({}, { __mode = "k" })
+
+for _, index in ipairs(frameTypes) do
+	local SetScript, GetScript, HookScript, HasScript = rawget(index, "SetScript"), rawget(index, "GetScript"), rawget(index, "HookScript"), rawget(index, "HasScript")
+	if SetScript and HasScript then
+		local function known(self, script)
+			local ok, has = pcall(HasScript, self, script)
+			return ok and has
+		end
+		index.SetScript = function(self, script, func)
+			if script == "OnEvent" or known(self, script) then
+				return SetScript(self, script, func)
+			end
+			local scripts = extraScripts[self] or {}
+			extraScripts[self] = scripts
+			scripts[script] = func
+		end
+		index.GetScript = function(self, script)
+			if script == "OnEvent" or known(self, script) then
+				return GetScript(self, script)
+			end
+			local scripts = extraScripts[self]
+			return scripts and scripts[script]
+		end
+		if HookScript then
+			index.HookScript = function(self, script, func)
+				if script == "OnEvent" or known(self, script) then
+					return HookScript(self, script, func)
+				end
+				local scripts = extraScripts[self] or {}
+				extraScripts[self] = scripts
+				local old = scripts[script]
+				scripts[script] = old and function(...) old(...) return func(...) end or func
+			end
+		end
+	end
+end
+
+local function runExtraScript(self, script, ...)
+	local scripts = extraScripts[self]
+	local func = scripts and scripts[script]
+	if func then
+		securecall(func, self, ...)
+	end
+end
+_G.ModernUI_RunExtraScript = runExtraScript
+
+for _, kind in ipairs({ "Model", "PlayerModel", "DressUpModel", "TabardModel" }) do
+	local index = methodTables[kind]
+	if index then
+		for _, setter in ipairs({ "SetModel", "SetUnit", "SetCreature", "SetDisplayInfo", "SetItem", "RefreshUnit" }) do
+			local original = index[setter]
+			if original then
+				index[setter] = function(self, ...)
+					local a, b, c, d = original(self, ...)
+					if extraScripts[self] and extraScripts[self].OnModelLoaded then
+						RunNextFrame(function() runExtraScript(self, "OnModelLoaded") end)
+					end
+					return a, b, c, d
+				end
+			end
+		end
+
+		-- Modern SetLight takes (enabled, lightValues): a table instead of the 3.3.5 argument list.
+		local SetLight = index.SetLight
+		if SetLight then
+			index.SetLight = function(self, enabled, light, ...)
+				if type(light) ~= "table" then
+					return SetLight(self, enabled, light, ...)
+				end
+				local point = light.point or {}
+				local ambient = light.ambientColor or {}
+				local diffuse = light.diffuseColor or {}
+				return SetLight(self, enabled and 1 or 0, light.omnidirectional and 1 or 0,
+					point.x or point[1] or 0, point.y or point[2] or 0, point.z or point[3] or -1,
+					light.ambientIntensity or 0, ambient.r or ambient[1] or 1, ambient.g or ambient[2] or 1, ambient.b or ambient[3] or 1,
+					light.diffuseIntensity or 0, diffuse.r or diffuse[1] or 1, diffuse.g or diffuse[2] or 1, diffuse.b or diffuse[3] or 1)
+			end
+		end
+		addTo(kind, "GetLight", function() return true, { omnidirectional = false, point = CreateVector3D(0, 0, -1), ambientIntensity = 1, ambientColor = CreateColor(1, 1, 1), diffuseIntensity = 1, diffuseColor = CreateColor(1, 1, 1) } end)
+	end
+end
+
+-- Regions take a scale of their own in the modern clients; here it is kept and reported.
+for _, index in ipairs(regionTypes) do
+	if rawget(index, "SetScale") == nil then
+		index.SetScale = function(self, scale) stateOf(self).scale = scale end
+		index.GetScale = function(self) return stateOf(self).scale or 1 end
+	end
+end
+
+add(frameTypes, "SetHyperlinksEnabled", noop)
+add(frameTypes, "GetHyperlinksEnabled", function() return true end)
+addTo("FontString", "SetHyperlinksEnabled", noop)
+addTo("EditBox", "ClearHighlightText", function(self) self:HighlightText(0, 0) end)
+addTo("EditBox", "SetHighlightColor", noop)
+addTo("EditBox", "GetHighlightColor", function() return 1, 1, 1, 0.3 end)
+addTo("EditBox", "SetSecurityDisablePaste", noop)
+addTo("EditBox", "SetSecurityDisableSetText", noop)
+addTo("EditBox", "SetForceUpperCase", noop)
+
+-- Tooltips: modern code colours a tooltip's border through tooltip.NineSlice.
+local function giveNineSlice(tooltip)
+	if type(tooltip) == "table" and tooltip.SetBackdropBorderColor and rawget(tooltip, "NineSlice") == nil then
+		tooltip.NineSlice = {
+			SetBorderColor = function(_, r, g, b, a) tooltip:SetBackdropBorderColor(r, g, b, a) end,
+			SetCenterColor = function(_, r, g, b, a) tooltip:SetBackdropColor(r, g, b, a) end,
+			GetBorderColor = function() return tooltip:GetBackdropBorderColor() end,
+			GetCenterColor = function() return tooltip:GetBackdropColor() end,
+			SetVertexColor = function(_, r, g, b, a) tooltip:SetBackdropBorderColor(r, g, b, a) end,
+			Show = noop, Hide = noop, SetShown = noop, SetAlpha = noop,
+			SetFrameLevel = noop, GetFrameLevel = function() return tooltip:GetFrameLevel() end,
+			SetPoint = noop, ClearAllPoints = noop, SetAllPoints = noop,
+		}
+		tooltip.layoutType = tooltip.layoutType or "TooltipDefaultLayout"
+	end
+end
+for _, name in ipairs({ "GameTooltip", "ItemRefTooltip", "ShoppingTooltip1", "ShoppingTooltip2", "ShoppingTooltip3",
+	"ItemRefShoppingTooltip1", "ItemRefShoppingTooltip2", "ItemRefShoppingTooltip3", "WorldMapTooltip", "WorldMapCompareTooltip1",
+	"WorldMapCompareTooltip2", "WorldMapCompareTooltip3", "FriendsTooltip" }) do
+	giveNineSlice(_G[name])
+end
+do
+	local wrappedCreateFrame = _G.CreateFrame
+	_G.CreateFrame = function(frameType, ...)
+		local frame = wrappedCreateFrame(frameType, ...)
+		if frame and frameType == "GameTooltip" then
+			giveNineSlice(frame)
+		end
+		return frame
+	end
+end

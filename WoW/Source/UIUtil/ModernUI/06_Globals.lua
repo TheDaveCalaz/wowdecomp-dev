@@ -410,8 +410,8 @@ define("GetAddOnEnableState", function(character, name)
 	if name == nil then
 		name, character = character, nil
 	end
-	local _, _, _, enabled = GetAddOnInfo(name)
-	return enabled and 2 or 0
+	local ok, _, _, _, enabled = pcall(GetAddOnInfo, name)
+	return ok and enabled and 2 or 0
 end)
 
 -- Constants and strings modern code reads at load time ------------------------------------------

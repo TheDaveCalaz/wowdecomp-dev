@@ -116,6 +116,63 @@ define("tUnorderedRemove", function(tbl, index)
 	tbl[n] = nil
 end)
 
+define("GetKeysArray", function(tbl)
+	local keys = {}
+	for k in pairs(tbl) do
+		keys[#keys + 1] = k
+	end
+	return keys
+end)
+
+define("GetValuesArray", function(tbl)
+	local values = {}
+	for _, v in pairs(tbl) do
+		values[#values + 1] = v
+	end
+	return values
+end)
+
+define("GetKeysArraySortedByValue", function(tbl)
+	local keys = GetKeysArray(tbl)
+	table.sort(keys, function(a, b) return tbl[a] < tbl[b] end)
+	return keys
+end)
+
+define("GetOrCreateTableEntry", function(tbl, key, defaultValue)
+	local value = tbl[key]
+	if value == nil then
+		value = defaultValue or {}
+		tbl[key] = value
+	end
+	return value
+end)
+
+define("GetOrCreateTableEntryByCallback", function(tbl, key, callback)
+	local value = tbl[key]
+	if value == nil then
+		value = callback()
+		tbl[key] = value
+	end
+	return value
+end)
+
+define("CountTable", function(tbl)
+	local n = 0
+	for _ in pairs(tbl) do
+		n = n + 1
+	end
+	return n
+end)
+
+define("tContains", function(tbl, item)
+	for _, v in pairs(tbl) do
+		if v == item then
+			return true
+		end
+	end
+	return false
+end)
+
 define("TableHasAnyEntries", function(tbl)
 	return next(tbl) ~= nil
 end)
