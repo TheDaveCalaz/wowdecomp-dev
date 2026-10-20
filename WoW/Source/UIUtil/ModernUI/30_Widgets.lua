@@ -1202,3 +1202,6 @@ do
 	end
 end
 
+
+-- The generated API surface (95_ApiSurface.lua) adds documented methods to these tables.
+_G.ModernUI_WidgetMethodTables = methodTables
