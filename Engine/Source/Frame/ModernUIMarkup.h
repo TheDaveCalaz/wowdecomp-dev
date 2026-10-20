@@ -8,6 +8,8 @@
 
 const char* ModernUI_ConvertMarkup(const char* text);
 void ModernUI_RegisterAtlas(const char* name, const char* file, float width, float height, float left, float right, float top, float bottom);
+// Looks up a registered atlas: its file, size in UI units and texture coordinates.
+bool ModernUI_FindAtlas(const char* name, const char** file, float* width, float* height, float* left, float* right, float* top, float* bottom);
 void ModernUI_RegisterColorName(const char* name, float r, float g, float b);
 
 #endif

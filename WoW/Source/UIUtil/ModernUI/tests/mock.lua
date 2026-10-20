@@ -81,6 +81,7 @@ function securecall(f, ...) local r = {pcall(f, ...)} if not r[1] then print("SE
 function debugstack() return "here" end
 function hooksecurefunc(name, f) local o = _G[name]; _G[name] = function(...) local r = {o(...)}; f(...); return unpack(r) end end
 function IsLoggedIn() return false end
+function GetCursorPosition() return 0, 0 end
 SlashCmdList = {}
 function UnitRace() return "Human", "Human" end
 function UnitSex() return 2 end

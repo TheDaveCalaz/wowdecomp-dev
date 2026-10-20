@@ -952,7 +952,21 @@ do
 end
 do
 	local set = namespace("C_Texture")
-	set("GetAtlasInfo", nilFn)
+	-- Atlases this client can draw (registered with ModernUI_RegisterAtlas), in the modern shape.
+	set("GetAtlasInfo", function(atlas)
+		local file, width, height, left, right, top, bottom
+		local fallback = _G.ModernUI_AtlasFallback and _G.ModernUI_AtlasFallback[atlas]
+		if fallback then
+			file, width, height, left, right, top, bottom = fallback[1], fallback[2], fallback[3], fallback[4] or 0, fallback[5] or 1, fallback[6] or 0, fallback[7] or 1
+		elseif ModernUI_GetAtlasInfo then
+			file, width, height, left, right, top, bottom = ModernUI_GetAtlasInfo(atlas)
+		end
+		if not file then
+			return nil
+		end
+		return { file = file, filename = file, width = width, height = height, leftTexCoord = left, rightTexCoord = right,
+			topTexCoord = top, bottomTexCoord = bottom, tilesHorizontally = false, tilesVertically = false }
+	end)
 	set("GetAtlasElements", emptyFn)
 	set("GetFilenameFromFileDataID", nilFn)
 end

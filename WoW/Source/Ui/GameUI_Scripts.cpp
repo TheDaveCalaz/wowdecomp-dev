@@ -1579,6 +1579,36 @@ static int32_t Script_ModernUI_RegisterAtlas(lua_State* L) {
     return 0;
 }
 
+// ModernUI_GetAtlasInfo(name) -> file, width, height, left, right, top, bottom, or nothing.
+static int32_t Script_ModernUI_GetAtlasInfo(lua_State* L) {
+    const char* file;
+    float width, height, left, right, top, bottom;
+
+    if (!lua_isstring(L, 1) || !ModernUI_FindAtlas(lua_tolstring(L, 1, nullptr), &file, &width, &height, &left, &right, &top, &bottom)) {
+        return 0;
+    }
+
+    lua_pushstring(L, file);
+    lua_pushnumber(L, width);
+    lua_pushnumber(L, height);
+    lua_pushnumber(L, left);
+    lua_pushnumber(L, right);
+    lua_pushnumber(L, top);
+    lua_pushnumber(L, bottom);
+    return 7;
+}
+
+bool ModernUI_CopyToClipboard(const char* text);
+
+// CopyToClipboard(text): as on modern clients.
+static int32_t Script_CopyToClipboard(lua_State* L) {
+    if (lua_isstring(L, 1)) {
+        ModernUI_CopyToClipboard(lua_tolstring(L, 1, nullptr));
+    }
+
+    return 0;
+}
+
 static int32_t Script_ModernUI_RegisterColorName(lua_State* L) {
     if (!lua_isstring(L, 1)) {
         return 0;
@@ -6509,6 +6539,8 @@ static FrameScript_Method s_ScriptFunctions[] = {
     { "ModernUI_Log", &Script_ModernUI_Log },
     { "ModernUI_RegisterAtlas", &Script_ModernUI_RegisterAtlas },
     { "ModernUI_RegisterColorName", &Script_ModernUI_RegisterColorName },
+    { "ModernUI_GetAtlasInfo", &Script_ModernUI_GetAtlasInfo },
+    { "CopyToClipboard", &Script_CopyToClipboard },
     { "ModernUI_DebugPlayerGUID", &Script_ModernUI_DebugPlayerGUID },
     { "ModernUI_SaveData", &Script_ModernUI_SaveData },
     { "SetCVar", &Script_SetCVar },

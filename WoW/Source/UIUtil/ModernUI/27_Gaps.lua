@@ -1005,3 +1005,168 @@ define("FillLocalizedClassList", function(list, female)
 	end
 	return list
 end)
+
+-- Modern functions on this client's own systems ---------------------------------------------------------
+
+local function namespaceSet(name)
+	local ns = _G[name] or {}
+	_G[name] = ns
+	return function(key, fn)
+		if ns[key] == nil then
+			ns[key] = fn
+		end
+	end
+end
+
+define("IsPlayerMoving", function() return (GetUnitSpeed("player") or 0) > 0 end)
+
+-- Cursor movement since the last frame.
+do
+	local lastX, lastY, deltaX, deltaY = nil, nil, 0, 0
+	local tracker = CreateFrame("Frame")
+	tracker:SetScript("OnUpdate", function()
+		local x, y = GetCursorPosition()
+		if lastX then
+			deltaX, deltaY = x - lastX, y - lastY
+		end
+		lastX, lastY = x, y
+	end)
+	define("GetCursorDelta", function() return deltaX, deltaY end)
+end
+
+-- Equipment sets: modern calls by set ID onto this client's by-name ones.
+do
+	local set = namespaceSet("C_EquipmentSet")
+	local function setName(setID)
+		return setID and GetEquipmentSetInfo(setID)
+	end
+	-- This client stores a set's icon as a macro icon index, or minus the slot of an equipped item.
+	local function iconIndex(icon)
+		if type(icon) == "number" and icon < 100000 then
+			return icon
+		end
+		if type(icon) ~= "string" then
+			return 1
+		end
+		local function bare(path) return (path or ""):lower():gsub("^interface\\icons\\", "") end
+		local wanted = bare(icon)
+		for slot = 1, 19 do
+			local texture = GetInventoryItemTexture("player", slot)
+			if texture and bare(texture) == wanted then
+				return -slot
+			end
+		end
+		for i = 1, GetNumMacroIcons() do
+			if bare(GetMacroIconInfo(i)) == wanted then
+				return i
+			end
+		end
+		return 1
+	end
+	set("CreateEquipmentSet", function(name, icon) SaveEquipmentSet(name, iconIndex(icon)) end)
+	set("SaveEquipmentSet", function(setID, icon)
+		local name = setName(setID)
+		if name then
+			SaveEquipmentSet(name, iconIndex(icon or select(2, GetEquipmentSetInfo(setID))))
+		end
+	end)
+	set("ModifyEquipmentSet", function(setID, newName, icon)
+		local name, oldIcon = GetEquipmentSetInfo(setID)
+		if not name then
+			return
+		end
+		if newName and newName ~= name then
+			RenameEquipmentSet(name, newName)
+			name = newName
+		end
+		if icon then
+			SaveEquipmentSet(name, iconIndex(icon))
+		end
+	end)
+	set("DeleteEquipmentSet", function(setID)
+		local name = setName(setID)
+		if name then
+			DeleteEquipmentSet(name)
+		end
+	end)
+	set("PickupEquipmentSet", function(setID)
+		local name = setName(setID)
+		if name then
+			PickupEquipmentSetByName(name)
+		end
+	end)
+end
+
+-- Minimap tracking in the modern table shape.
+do
+	local set = namespaceSet("C_Minimap")
+	set("GetNumTrackingTypes", function() return GetNumTrackingTypes() end)
+	set("GetTrackingInfo", function(index)
+		local name, texture, active, category = GetTrackingInfo(index)
+		if not name then
+			return nil
+		end
+		return { name = name, texture = texture, active = active and true or false, type = category, subType = -1, spellID = nil }
+	end)
+	set("SetTracking", function(index, on) SetTracking(index, on) end)
+end
+
+-- Calendar months.
+do
+	local set = namespaceSet("C_Calendar")
+	set("SetMonth", function(offset) CalendarSetMonth(offset) end)
+	set("SetAbsMonth", function(month, year) CalendarSetAbsMonth(month, year) end)
+	set("GetMonthInfo", function(offset)
+		local month, year, numDays, firstWeekday = CalendarGetMonth(offset or 0)
+		return { month = month, year = year, numDays = numDays, firstWeekday = firstWeekday }
+	end)
+end
+
+-- Armour: the share of physical damage it removes against a target of the given level (Wrath formula).
+do
+	local set = namespaceSet("C_PaperDollInfo")
+	local function effectiveness(armor, level)
+		armor, level = armor or 0, level or UnitLevel("player")
+		local constant = level < 60 and (400 + 85 * level) or (467.5 * level - 22167.5)
+		return math.min(0.75, armor / (armor + constant))
+	end
+	set("GetArmorEffectiveness", effectiveness)
+	set("GetArmorEffectivenessAgainstTarget", function(armor)
+		local level = UnitExists("target") and UnitLevel("target") or UnitLevel("player")
+		return effectiveness(armor, level > 0 and level or UnitLevel("player") + 3)
+	end)
+end
+
+-- Strings and base64.
+do
+	local set = namespaceSet("C_StringUtil")
+	set("WrapString", function(text, prefix, suffix) return (prefix or "") .. (text or "") .. (suffix or "") end)
+	local codec = namespaceSet("C_EncodingUtil")
+	local alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+	codec("EncodeBase64", function(data)
+		return ((data:gsub(".", function(c)
+			local byte, bits = c:byte(), ""
+			for i = 8, 1, -1 do bits = bits .. (byte % 2 ^ i - byte % 2 ^ (i - 1) > 0 and "1" or "0") end
+			return bits
+		end) .. "0000"):gsub("%d%d%d?%d?%d?%d?", function(bits)
+			if #bits < 6 then return "" end
+			local value = 0
+			for i = 1, 6 do value = value + (bits:sub(i, i) == "1" and 2 ^ (6 - i) or 0) end
+			return alphabet:sub(value + 1, value + 1)
+		end) .. ({ "", "==", "=" })[#data % 3 + 1])
+	end)
+	codec("DecodeBase64", function(data)
+		data = data:gsub("[^" .. alphabet .. "=]", "")
+		return (data:gsub(".", function(c)
+			if c == "=" then return "" end
+			local value, bits = alphabet:find(c, 1, true) - 1, ""
+			for i = 6, 1, -1 do bits = bits .. (value % 2 ^ i - value % 2 ^ (i - 1) > 0 and "1" or "0") end
+			return bits
+		end):gsub("%d%d%d?%d?%d?%d?%d?%d?", function(bits)
+			if #bits ~= 8 then return "" end
+			local value = 0
+			for i = 1, 8 do value = value + (bits:sub(i, i) == "1" and 2 ^ (8 - i) or 0) end
+			return string.char(value)
+		end))
+	end)
+end

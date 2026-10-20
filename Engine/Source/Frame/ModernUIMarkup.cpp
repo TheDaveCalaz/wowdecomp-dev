@@ -88,6 +88,28 @@ void ModernUI_RegisterAtlas(const char* name, const char* file, float width, flo
     Atlases()[name] = AtlasEntry { file, width, height, left, right, top, bottom };
 }
 
+bool ModernUI_FindAtlas(const char* name, const char** file, float* width, float* height, float* left, float* right, float* top, float* bottom) {
+    if (!name) {
+        return false;
+    }
+
+    auto it = Atlases().find(name);
+
+    if (it == Atlases().end()) {
+        return false;
+    }
+
+    const AtlasEntry& atlas = it->second;
+    *file = atlas.file.c_str();
+    *width = atlas.width;
+    *height = atlas.height;
+    *left = atlas.left;
+    *right = atlas.right;
+    *top = atlas.top;
+    *bottom = atlas.bottom;
+    return true;
+}
+
 void ModernUI_RegisterColorName(const char* name, float r, float g, float b) {
     if (!name) {
         return;

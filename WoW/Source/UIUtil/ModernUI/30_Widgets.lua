@@ -289,6 +289,12 @@ end
 addTo("Texture", "SetAtlas", function(self, atlas, useAtlasSize)
 	stateOf(self).atlas = atlas
 	local entry = atlas and _G.ModernUI_AtlasFallback[atlas]
+	if not entry and atlas and ModernUI_GetAtlasInfo then
+		local file, width, height, left, right, top, bottom = ModernUI_GetAtlasInfo(atlas)
+		if file then
+			entry = { file, width, height, left, right, top, bottom }
+		end
+	end
 	if not entry then
 		return false
 	end

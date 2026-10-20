@@ -2786,6 +2786,25 @@ void CSimpleTexture::LoadXML(XMLNode* node, CStatus* status) {
         }
     }
 
+    // ModernUI: atlas="name" (and useAtlasSize="true") draws a registered atlas, as modern clients do.
+    const char* atlasName = node->GetAttributeByName("atlas");
+    const char* atlasFile;
+    float atlasWidth, atlasHeight, atlasLeft, atlasRight, atlasTop, atlasBottom;
+
+    if (atlasName && *atlasName && ModernUI_FindAtlas(atlasName, &atlasFile, &atlasWidth, &atlasHeight, &atlasLeft, &atlasRight, &atlasTop, &atlasBottom)) {
+        if (this->SetTexture(atlasFile, 0, 0, CSimpleTexture::s_textureFilterMode, ImageMode_Normal)) {
+            C2Vector atlasCoords[4] = { { atlasLeft, atlasTop }, { atlasLeft, atlasBottom }, { atlasRight, atlasTop }, { atlasRight, atlasBottom } };
+            this->SetTexCoord(atlasCoords);
+        }
+
+        const char* useAtlasSize = node->GetAttributeByName("useAtlasSize");
+
+        if (useAtlasSize && StringToBOOL(useAtlasSize) && !node->GetChildByName("Size") && atlasWidth > 0.0f && atlasHeight > 0.0f) {
+            this->SetWidth(NDCToDDCWidth(atlasWidth / (CoordinateGetAspectCompensation() * 1024.0f)));
+            this->SetHeight(NDCToDDCWidth(atlasHeight / (CoordinateGetAspectCompensation() * 1024.0f)));
+        }
+    }
+
     const char* alphaMode = node->GetAttributeByName("alphaMode");
     EGxBlend blend;
 
