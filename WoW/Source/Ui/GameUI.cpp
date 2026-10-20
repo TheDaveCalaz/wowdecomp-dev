@@ -3720,13 +3720,17 @@ void CGGameUI::EnterWorld() {
     CGGameUI::m_autoStoreItem = WOWGUID();
     CGGameUI::m_autoStoreItemID = 0;
 
+    // ModernUI: PLAYER_ENTERING_WORLD carries (isInitialLogin, isReloadingUi) as in the modern clients.
+    int32_t initialLogin = CGGameUI::m_loggingIn ? 1 : 0;
+    int32_t reloadingUI = CGGameUI::m_currentlyReloadingUI ? 1 : 0;
+
     if (CGGameUI::m_loggingIn) {
         CGGameUI::m_loggingIn = 0;
         FrameScript_SignalEvent(SCRIPT_EVENT_PLAYER_LOGIN, nullptr);
         CGLCD::Login();
     }
 
-    FrameScript_SignalEvent(SCRIPT_EVENT_PLAYER_ENTERING_WORLD, nullptr);
+    FrameScript_SignalEvent(SCRIPT_EVENT_PLAYER_ENTERING_WORLD, "%b%b", initialLogin, reloadingUI);
     CGMinimapFrame::EnterWorld();
     CGChat::EnterWorld();
     CGActionBar::EnterWorld();

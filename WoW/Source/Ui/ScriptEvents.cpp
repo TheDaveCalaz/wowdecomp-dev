@@ -96,6 +96,8 @@ static bool ParseTrailingTokens(const char* token, WOWGUID& guid, CGPlayer_C* pl
 
 // VERIFY: 618bd45a auto
 // OFFSET: 0x0060ABF0
+WOWGUID ModernUI_GetLoginGUID();
+
 bool Script_GetGUIDFromToken(const char* token, WOWGUID& guid, bool defaultToTarget) {
     CGPlayer_C* player = static_cast<CGPlayer_C*>(ClntObjMgrObjectPtr(ClntObjMgrGetActivePlayer(), TYPEMASK_PLAYER, __FILE__, __LINE__));
 
@@ -116,6 +118,10 @@ bool Script_GetGUIDFromToken(const char* token, WOWGUID& guid, bool defaultToTar
         // ModernUI: before the player object exists (while AddOns load) the active player's GUID is
         // already known; modern addons read UnitGUID("player") at that point.
         guid = player ? player->m_obj->m_guid : ClntObjMgrGetActivePlayer();
+
+        if (!guid) {
+            guid = ModernUI_GetLoginGUID();
+        }
     } else if (!SStrCmpI(token, "vehicle", 7)) {
         token += 7;
         guid = player && player->IsSeatedInVehicle() ? WOWGUID { player->GetTransportGUID() } : WOWGUID();

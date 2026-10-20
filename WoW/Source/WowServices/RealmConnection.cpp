@@ -407,7 +407,16 @@ void RealmConnection::RequestCharacterEnum() {
 
 // VERIFY: 490618f4 manual
 // OFFSET: 0x00464AB0
+// ModernUI: the character being logged in, known before the player object exists (UnitGUID("player")
+// answers with it while AddOns load).
+static WOWGUID s_modernUILoginGUID;
+
+WOWGUID ModernUI_GetLoginGUID() {
+    return s_modernUILoginGUID;
+}
+
 void RealmConnection::RequestCharacterLogin(WOWGUID guid, int32_t a2) {
+    s_modernUILoginGUID = guid;
     CDataStore msg;
     msg.Put(static_cast<uint32_t>(CMSG_PLAYER_LOGIN));
     msg.Put(guid.m_guid);

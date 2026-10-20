@@ -922,3 +922,5 @@ define("LE_MODEL_BLEND_OPERATION_NONE", 0)
 define("CAMERA_TRANSITION_TYPE_IMMEDIATE", 1)
 define("CAMERA_TRANSITION_TYPE_INTERPOLATION", 2)
 define("ACCOUNT_WIDE_FONT_COLOR", CreateColor(0, 0.8, 1))
+
+define("GetToolTipInfo", function() return 0, 0, 0, 0, 0, 0, 0, 0 end)

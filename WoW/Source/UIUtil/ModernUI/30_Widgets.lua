@@ -1201,3 +1201,53 @@ do
 		return frame
 	end
 end
+
+-- Parts found by key on named frames ---------------------------------------------------------------------
+-- Modern code reaches a frame's parts by key (GroupLootFrame1.IconFrame, frame.Text, button.Icon);
+-- the 3.3.5 templates give them only names ($parentIconFrame). When a frame has no such key, a
+-- capitalised key is looked up as the frame's name plus the key, so both styles reach the same part.
+
+do
+	local seenMeta = {}
+	local function patch(object)
+		local mt = object and getmetatable(object)
+		if type(mt) ~= "table" or seenMeta[mt] or type(mt.__index) ~= "table" then
+			return
+		end
+		seenMeta[mt] = true
+		local index = mt.__index
+		local GetName = index.GetName
+		if not GetName then
+			return
+		end
+		mt.__index = function(self, key)
+			local value = index[key]
+			if value ~= nil then
+				return value
+			end
+			if type(key) == "string" then
+				local first = key:byte(1)
+				if first and first >= 65 and first <= 90 then
+					local name = GetName(self)
+					if name then
+						local part = rawget(_G, name .. key)
+						if type(part) == "table" and rawget(part, 0) then
+							return part
+						end
+					end
+				end
+			end
+		end
+	end
+	local probeParent = CreateFrame_335("Frame")
+	probeParent:Hide()
+	for _, kind in ipairs(frameKinds) do
+		local ok, object = pcall(CreateFrame_335, kind, nil, probeParent)
+		if ok and object then
+			patch(object)
+			if object.Hide then object:Hide() end
+		end
+	end
+	patch(probeParent:CreateTexture())
+	patch(probeParent:CreateFontString())
+end

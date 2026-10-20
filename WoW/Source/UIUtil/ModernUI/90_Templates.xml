@@ -348,4 +348,27 @@
 	<Texture name="UIPanelButtonDisabledTexture" file="Interface\Buttons\UI-Panel-Button-Disabled" virtual="true">
 		<TexCoords left="0" right="0.625" top="0" bottom="0.6875"/>
 	</Texture>
+
+	<!-- Modern scrolling lists (the code is in 29_ScrollBox.lua). -->
+	<Frame name="ScrollBoxBaseTemplate" virtual="true">
+		<Scripts>
+			<OnLoad>
+				ModernUI_SetupScrollBox(self)
+			</OnLoad>
+		</Scripts>
+	</Frame>
+	<Frame name="WowScrollBoxList" inherits="ScrollBoxBaseTemplate" virtual="true"/>
+	<Frame name="WowScrollBox" inherits="ScrollBoxBaseTemplate" virtual="true"/>
+	<Frame name="ScrollBoxListTemplate" inherits="ScrollBoxBaseTemplate" virtual="true"/>
+	<Frame name="ScrollBarBaseTemplate" virtual="true">
+		<Size><AbsDimension x="16" y="100"/></Size>
+		<Scripts>
+			<OnLoad>
+				ModernUI_SetupScrollBar(self)
+			</OnLoad>
+		</Scripts>
+	</Frame>
+	<Frame name="WowTrimScrollBar" inherits="ScrollBarBaseTemplate" virtual="true"/>
+	<Frame name="MinimalScrollBar" inherits="ScrollBarBaseTemplate" virtual="true"/>
+	<Frame name="WowClassicScrollBar" inherits="ScrollBarBaseTemplate" virtual="true"/>
 </Ui>
