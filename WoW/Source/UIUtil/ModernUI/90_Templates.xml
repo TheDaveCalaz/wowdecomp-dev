@@ -423,4 +423,506 @@
 			<OnDisable method="OnDisable"/>
 		</Scripts>
 	</Button>
+
+	<!-- Model frames with controls (Blizzard's shared templates; code in 34_ModelFrames.lua). -->
+	<Button name="ModelControlButtonTemplate" virtual="true">
+		<Size x="18" y="18"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture name="$parentBg" file="Interface\Common\UI-ModelControlPanel" parentKey="bg">
+					<Size x="16" y="16"/>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<TexCoords left="0.29687500" right="0.54687500" top="0.14843750" bottom="0.27343750"/>
+				</Texture>
+			</Layer>
+			<Layer level="ARTWORK">
+				<Texture name="$parentIcon" file="Interface\Common\UI-ModelControlPanel" virtual="true" parentKey="icon">
+					<Size x="16" y="16"/>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<TexCoords left="0.01562500" right="0.26562500" top="0.00781250" bottom="0.13281250"/>
+				</Texture>
+			</Layer>
+			<Layer level="HIGHLIGHT">
+				<Texture file="Interface\Common\UI-ModelControlPanel">
+					<Size x="16" y="16"/>
+					<Anchors>
+						<Anchor point="CENTER"/>
+					</Anchors>
+					<TexCoords left="0.57812500" right="0.82812500" top="0.00781250" bottom="0.13281250"/>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnMouseDown function="ModelControlButton_OnMouseDown"/>
+			<OnMouseUp function="ModelControlButton_OnMouseUp"/>
+			<OnEnter>
+				self:GetParent():SetAlpha(1);
+				if ( GetCVar("UberTooltips") == "1" ) then
+					GameTooltip_SetDefaultAnchor(GameTooltip, UIParent);
+					GameTooltip:SetText(self.tooltip, HIGHLIGHT_FONT_COLOR.r, HIGHLIGHT_FONT_COLOR.g, HIGHLIGHT_FONT_COLOR.b);
+					if ( self.tooltipText ) then
+						GameTooltip:AddLine(self.tooltipText, _, _, _, 1, 1);
+					end
+					GameTooltip:Show();
+				end
+			</OnEnter>
+			<OnLeave>
+				self:GetParent():SetAlpha(0.5);
+				GameTooltip:Hide();
+			</OnLeave>
+		</Scripts>
+	</Button>
+	<PlayerModel name="MouseDisabledModelTemplate" virtual="true">
+		<Scripts>
+			<OnLoad function="ModernUI_Model_OnLoad"/>
+			<OnEvent function="ModernUI_Model_OnEvent"/>
+			<OnUpdate function="ModernUI_Model_OnUpdate"/>
+		</Scripts>
+	</PlayerModel>
+	<PlayerModel name="ModelTemplate" inherits="MouseDisabledModelTemplate" virtual="true">
+		<Scripts>
+			<OnMouseUp function="ModernUI_Model_OnMouseUp"/>
+			<OnMouseDown function="ModernUI_Model_OnMouseDown"/>
+		</Scripts>
+	</PlayerModel>
+
+	<PlayerModel name="ModelWithZoomTemplate" inherits="ModelTemplate" virtual="true">
+		<Scripts>
+			<OnMouseWheel function="ModernUI_Model_OnMouseWheel"/>
+		</Scripts>
+	</PlayerModel>
+	<PlayerModel name="ModelWithControlsTemplate" virtual="true">
+		<Frames>
+			<Frame name="$parentControlFrame" parentKey="controlFrame" alpha="0.5" hidden="true">
+				<Size x="112" y="23"/>
+				<Anchors>
+					<Anchor point="TOP" x="0" y="-2"/>
+				</Anchors>
+				<Layers>
+					<Layer level="BACKGROUND">
+						<Texture name="$parentRight" file="Interface\Common\UI-ModelControlPanel">
+							<Size x="23" y="23"/>
+							<Anchors>
+								<Anchor point="RIGHT" x="0" y="0"/>
+							</Anchors>
+							<TexCoords left="0.01562500" right="0.37500000" top="0.42968750" bottom="0.60937500"/>
+						</Texture>
+						<Texture name="$parentLeft" file="Interface\Common\UI-ModelControlPanel">
+							<Size x="23" y="23"/>
+							<Anchors>
+								<Anchor point="LEFT" x="0" y="0"/>
+							</Anchors>
+							<TexCoords left="0.40625000" right="0.76562500" top="0.42968750" bottom="0.60937500"/>
+						</Texture>
+						<Texture name="$parentMiddle" file="Interface\Common\UI-ModelControlPanel">
+							<Size x="32" y="23"/>
+							<Anchors>
+								<Anchor point="LEFT" relativeTo="$parentLeft" relativePoint="RIGHT" x="0" y="0"/>
+								<Anchor point="RIGHT" relativeTo="$parentRight" relativePoint="LEFT" x="0" y="0"/>
+							</Anchors>
+							<TexCoords left="0" right="1" top="0.62500000" bottom="0.80468750"/>
+						</Texture>
+					</Layer>
+				</Layers>
+				<Frames>
+					<Button name="$parentZoomInButton" inherits="ModelControlButtonTemplate">
+						<Anchors>
+							<Anchor point="LEFT" x="2" y="0"/>
+						</Anchors>
+						<Scripts>
+							<OnLoad>
+								self:RegisterForClicks("AnyUp");
+								self.icon:SetTexCoord(0.57812500, 0.82812500, 0.14843750, 0.27343750);
+								self.tooltip = ZOOM_IN;
+								self.tooltipText = KEY_MOUSEWHEELUP;
+							</OnLoad>
+							<OnClick>
+								local model = self:GetParent():GetParent();
+								ModernUI_Model_OnMouseWheel(model, 1);
+								PlaySound(SOUNDKIT.IG_INVENTORY_ROTATE_CHARACTER);
+							</OnClick>
+						</Scripts>
+					</Button>
+					<Button name="$parentZoomOutButton" inherits="ModelControlButtonTemplate">
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentZoomInButton" relativePoint="RIGHT" x="0" y="0"/>
+						</Anchors>
+						<Scripts>
+							<OnLoad>
+								self:RegisterForClicks("AnyUp");
+								self.icon:SetTexCoord(0.29687500, 0.54687500, 0.00781250, 0.13281250);
+								self.tooltip = ZOOM_OUT;
+								self.tooltipText = KEY_MOUSEWHEELDOWN;
+							</OnLoad>
+							<OnClick>
+								local model = self:GetParent():GetParent();
+								ModernUI_Model_OnMouseWheel(model, -1);
+								PlaySound(SOUNDKIT.IG_INVENTORY_ROTATE_CHARACTER);
+							</OnClick>
+						</Scripts>
+					</Button>
+					<Button name="$parentPanButton" inherits="ModelControlButtonTemplate" parentKey="panButton">
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentZoomOutButton" relativePoint="RIGHT" x="0" y="0"/>
+						</Anchors>
+						<Scripts>
+							<OnLoad>
+								self:RegisterForClicks("AnyUp");
+								self.icon:SetTexCoord(0.29687500, 0.54687500, 0.28906250, 0.41406250);
+								self.tooltip = DRAG_MODEL;
+								self.tooltipText = DRAG_MODEL_TOOLTIP;
+							</OnLoad>
+							<OnMouseDown>
+								ModelControlButton_OnMouseDown(self);
+								ModernUI_Model_StartPanning(self:GetParent():GetParent(), true);
+							</OnMouseDown>
+							<OnMouseUp>
+								PlaySound(SOUNDKIT.IG_INVENTORY_ROTATE_CHARACTER);
+							</OnMouseUp>
+						</Scripts>
+					</Button>
+					<Button name="$parentRotateLeftButton" inherits="ModelControlButtonTemplate" parentKey="rotateLeftButton">
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentPanButton" relativePoint="RIGHT" x="0" y="0"/>
+						</Anchors>
+						<Scripts>
+							<OnLoad>
+								self:RegisterForClicks("AnyUp");
+								self.icon:SetTexCoord(0.01562500, 0.26562500, 0.28906250, 0.41406250);
+								self.tooltip = ROTATE_LEFT;
+								self.tooltipText = ROTATE_TOOLTIP;
+							</OnLoad>
+							<OnClick>
+								ModernUI_Model_RotateLeft(self:GetParent():GetParent());
+							</OnClick>
+						</Scripts>
+					</Button>
+					<Button name="$parentRotateRightButton" inherits="ModelControlButtonTemplate" parentKey="rotateRightButton">
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentRotateLeftButton" relativePoint="RIGHT" x="0" y="0"/>
+						</Anchors>
+						<Scripts>
+							<OnLoad>
+								self:RegisterForClicks("AnyUp");
+								self.icon:SetTexCoord(0.57812500, 0.82812500, 0.28906250, 0.41406250);
+								self.tooltip = ROTATE_RIGHT;
+								self.tooltipText = ROTATE_TOOLTIP;
+							</OnLoad>
+							<OnClick>
+								ModernUI_Model_RotateRight(self:GetParent():GetParent());
+							</OnClick>
+						</Scripts>
+					</Button>
+					<Button name="$parentRotateResetButton" inherits="ModelControlButtonTemplate">
+						<Anchors>
+							<Anchor point="LEFT" relativeTo="$parentRotateRightButton" relativePoint="RIGHT" x="0" y="0"/>
+						</Anchors>
+						<Scripts>
+							<OnLoad>
+								self:RegisterForClicks("AnyUp");
+								self.tooltip = RESET_POSITION;
+							</OnLoad>
+							<OnClick>
+								ModernUI_Model_Reset(self:GetParent():GetParent());
+								PlaySound(SOUNDKIT.IG_INVENTORY_ROTATE_CHARACTER);
+							</OnClick>
+						</Scripts>
+					</Button>
+				</Frames>
+				<Scripts>
+					<OnHide>
+						if ( self.buttonDown ) then
+							ModelControlButton_OnMouseUp(self.buttonDown);
+						end
+					</OnHide>
+				</Scripts>
+			</Frame>
+		</Frames>
+		<Scripts>
+			<OnLoad function="ModernUI_Model_OnLoad"/>
+			<OnEvent function="ModernUI_Model_OnEvent"/>
+			<OnUpdate function="ModernUI_Model_OnUpdate"/>
+			<OnMouseUp>
+				if ( button == "RightButton" and self.panning ) then
+					ModernUI_Model_StopPanning(self);
+				elseif ( self.mouseDown ) then
+					self.onMouseUpFunc(self, button);
+				end
+			</OnMouseUp>
+			<OnMouseDown>
+				if ( button == "RightButton" and not self.mouseDown ) then
+					ModernUI_Model_StartPanning(self);
+				else
+					ModernUI_Model_OnMouseDown(self, button);
+				end
+			</OnMouseDown>
+			<OnMouseWheel>
+				ModernUI_Model_OnMouseWheel(self, delta);
+			</OnMouseWheel>
+			<OnEnter>
+				self.controlFrame:Show();
+			</OnEnter>
+			<OnLeave>
+				if ( not self.controlFrame:IsMouseOver() and not ModelPanningFrame:IsShown() ) then
+					self.controlFrame:Hide();
+				end
+			</OnLeave>
+			<OnHide>
+				if ( self.panning ) then
+					ModernUI_Model_StopPanning(self);
+				end
+				self.mouseDown = false;
+				self.controlFrame:Hide();
+			</OnHide>
+		</Scripts>
+	</PlayerModel>
+
+	<Frame name="ModelPanningFrame" hidden="true" frameStrata="DIALOG" clampedToScreen="true" enableMouse="true">
+		<Size x="32" y="32"/>
+		<Layers>
+			<Layer level="ARTWORK">
+				<Texture file="Interface\Cursor\UI-Cursor-Move" setAllPoints="true"/>
+			</Layer>
+		</Layers>
+		<Scripts>
+			<OnUpdate>
+				local model = self.model;
+				local controlFrame = model.controlFrame;
+				if ( not IsMouseButtonDown(controlFrame.panButton) ) then
+					ModernUI_Model_StopPanning(model);
+					if ( controlFrame.buttonDown ) then
+						ModelControlButton_OnMouseUp(controlFrame.buttonDown);
+					end
+					if ( not controlFrame:IsMouseOver() ) then
+						controlFrame:Hide();
+					end
+				end
+			</OnUpdate>
+		</Scripts>
+	</Frame>
+
+	<!-- Modern dropdown buttons (CreateFrame("DropdownButton", ..., "WowStyle1DropdownTemplate")), drawn like this
+	     client's dropdowns; the menu comes from DropdownButtonMixin:SetupMenu (28_Menu.lua). -->
+	<Button name="WowStyle1DropdownTemplate" mixin="DropdownButtonMixin" virtual="true">
+		<Size x="150" y="26"/>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Background" setAllPoints="true">
+					<Color r="0" g="0" b="0" a="0.5"/>
+				</Texture>
+			</Layer>
+			<Layer level="BORDER">
+				<Texture parentKey="Left" file="Interface\Buttons\UI-SliderBar-Border">
+					<Size x="8" y="26"/>
+					<Anchors><Anchor point="LEFT"/></Anchors>
+					<TexCoords left="0" right="0.0625" top="0" bottom="0.75"/>
+				</Texture>
+				<Texture parentKey="Right" file="Interface\Buttons\UI-SliderBar-Border">
+					<Size x="8" y="26"/>
+					<Anchors><Anchor point="RIGHT"/></Anchors>
+					<TexCoords left="0.9375" right="1" top="0" bottom="0.75"/>
+				</Texture>
+				<Texture parentKey="Middle" file="Interface\Buttons\UI-SliderBar-Border">
+					<Size x="10" y="26"/>
+					<Anchors>
+						<Anchor point="LEFT" relativeKey="$parent.Left" relativePoint="RIGHT"/>
+						<Anchor point="RIGHT" relativeKey="$parent.Right" relativePoint="LEFT"/>
+					</Anchors>
+					<TexCoords left="0.0625" right="0.9375" top="0" bottom="0.75"/>
+				</Texture>
+			</Layer>
+			<Layer level="ARTWORK">
+				<Texture parentKey="Arrow" file="Interface\ChatFrame\UI-ChatIcon-ScrollDown-Up">
+					<Size x="20" y="20"/>
+					<Anchors><Anchor point="RIGHT" x="-2" y="0"/></Anchors>
+				</Texture>
+				<FontString parentKey="Text" inherits="GameFontHighlightSmall" justifyH="LEFT">
+					<Anchors>
+						<Anchor point="LEFT" x="8" y="0"/>
+						<Anchor point="RIGHT" x="-22" y="0"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+		<HighlightTexture file="Interface\Buttons\UI-Common-MouseHilight" alphaMode="ADD"/>
+		<Scripts>
+			<OnLoad>
+				self:SetFontString(self.Text)
+			</OnLoad>
+		</Scripts>
+	</Button>
+	<Button name="WowStyle2DropdownTemplate" inherits="WowStyle1DropdownTemplate" virtual="true"/>
+	<Button name="WowStyle1FilterDropdownTemplate" inherits="WowStyle1DropdownTemplate" virtual="true"/>
+	<Button name="WowStyleDropdownTemplate" inherits="WowStyle1DropdownTemplate" virtual="true"/>
+
+	<!-- The icon picker popup (Blizzard's IconSelectorPopupFrameTemplate). The code is Blizzard's, imported by
+	     96_BlizzardShared.lua; the icon grid is ModernUIIconSelectorMixin (97_IconSelector.lua). -->
+	<Frame name="IconSelectorPopupFrameTemplate" mixin="IconSelectorPopupFrameTemplateMixin" toplevel="true" frameStrata="DIALOG" enableMouse="true" virtual="true">
+		<Size x="525" y="495"/>
+		<Anchors>
+			<Anchor point="TOPLEFT" relativePoint="TOPRIGHT"/>
+		</Anchors>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="BG">
+					<Anchors>
+						<Anchor point="TOPLEFT" x="7" y="-7"/>
+						<Anchor point="BOTTOMRIGHT" x="-7" y="7"/>
+					</Anchors>
+					<Color r="0" g="0" b="0" a="0.8"/>
+				</Texture>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Frame parentKey="BorderBox" setAllPoints="true">
+				<Backdrop edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
+					<EdgeSize><AbsValue val="32"/></EdgeSize>
+				</Backdrop>
+				<Layers>
+					<Layer level="BORDER">
+						<FontString parentKey="EditBoxHeaderText" inherits="GameFontHighlightSmall">
+							<Anchors><Anchor point="TOPLEFT" x="24" y="-21"/></Anchors>
+						</FontString>
+						<FontString parentKey="IconSelectionText" inherits="GameFontHighlightSmall">
+							<Anchors><Anchor point="TOPLEFT" x="24" y="-79"/></Anchors>
+						</FontString>
+					</Layer>
+				</Layers>
+				<Frames>
+					<Frame parentKey="SelectedIconArea">
+						<Size x="275" y="45"/>
+						<Anchors><Anchor point="TOPRIGHT" x="-13" y="-13"/></Anchors>
+						<Frames>
+							<Button parentKey="SelectedIconButton" mixin="SelectedIconButtonMixin">
+								<Size x="36" y="36"/>
+								<Anchors><Anchor point="TOPRIGHT" x="-5" y="-4"/></Anchors>
+								<Layers>
+									<Layer level="BACKGROUND">
+										<Texture file="Interface\Buttons\UI-EmptySlot-Disabled">
+											<Size x="45" y="45"/>
+											<Anchors><Anchor point="CENTER" x="0" y="-1"/></Anchors>
+											<TexCoords left="0.140625" right="0.84375" top="0.140625" bottom="0.84375"/>
+										</Texture>
+									</Layer>
+									<Layer level="ARTWORK">
+										<Texture parentKey="Icon" setAllPoints="true"/>
+									</Layer>
+								</Layers>
+								<HighlightTexture file="Interface\Buttons\ButtonHilight-Square" alphaMode="ADD"/>
+								<Scripts>
+									<OnClick>self:OnClick()</OnClick>
+								</Scripts>
+							</Button>
+							<Frame parentKey="SelectedIconText">
+								<Size x="220" y="36"/>
+								<Anchors><Anchor point="TOPRIGHT" x="-46" y="-6"/></Anchors>
+								<Layers>
+									<Layer level="OVERLAY">
+										<FontString parentKey="SelectedIconHeader" inherits="GameFontNormalSmall" justifyH="RIGHT">
+											<Anchors><Anchor point="TOPRIGHT"/></Anchors>
+										</FontString>
+										<FontString parentKey="SelectedIconDescription" inherits="GameFontHighlightSmall" justifyH="RIGHT">
+											<Anchors><Anchor point="TOPRIGHT" relativeKey="$parent.SelectedIconHeader" relativePoint="BOTTOMRIGHT" x="0" y="-2"/></Anchors>
+										</FontString>
+									</Layer>
+								</Layers>
+								<Scripts>
+									<OnLoad>
+										self.SelectedIconHeader:SetText(ICON_SELECTION_TITLE_CURRENT or "")
+										self.Layout = function() end
+									</OnLoad>
+								</Scripts>
+							</Frame>
+						</Frames>
+					</Frame>
+					<Frame parentKey="IconDragArea" hidden="true">
+						<Size x="499" y="391"/>
+						<Anchors><Anchor point="TOPLEFT" x="13" y="-68"/></Anchors>
+						<Frames>
+							<Frame parentKey="IconDragAreaContent" setAllPoints="true">
+								<Layers>
+									<Layer level="OVERLAY">
+										<Texture parentKey="PlusIcon" file="Interface\Buttons\UI-PlusButton-Up">
+											<Size x="32" y="32"/>
+											<Anchors><Anchor point="RIGHT" relativePoint="CENTER" x="-60" y="0"/></Anchors>
+										</Texture>
+										<FontString parentKey="IconDragText" inherits="GameFontGreenLarge">
+											<Anchors><Anchor point="CENTER"/></Anchors>
+										</FontString>
+									</Layer>
+								</Layers>
+								<Scripts>
+									<OnLoad>
+										self.IconDragText:SetText(ICON_SELECTION_DRAG or "")
+										self.Layout = function() end
+									</OnLoad>
+								</Scripts>
+							</Frame>
+						</Frames>
+					</Frame>
+					<EditBox parentKey="IconSelectorEditBox" mixin="IconSelectorEditBoxMixin" letters="16" historyLines="0" autoFocus="false">
+						<Size x="182" y="20"/>
+						<Anchors><Anchor point="TOPLEFT" x="29" y="-35"/></Anchors>
+						<Layers>
+							<Layer level="BACKGROUND">
+								<Texture parentKey="IconSelectorPopupNameLeft" file="Interface\ClassTrainerFrame\UI-ClassTrainer-FilterBorder">
+									<Size x="12" y="29"/>
+									<Anchors><Anchor point="TOPLEFT" x="-11" y="0"/></Anchors>
+									<TexCoords left="0" right="0.09375" top="0" bottom="1.0"/>
+								</Texture>
+								<Texture parentKey="IconSelectorPopupNameMiddle" file="Interface\ClassTrainerFrame\UI-ClassTrainer-FilterBorder">
+									<Size x="175" y="29"/>
+									<Anchors><Anchor point="LEFT" relativeKey="$parent.IconSelectorPopupNameLeft" relativePoint="RIGHT"/></Anchors>
+									<TexCoords left="0.09375" right="0.90625" top="0" bottom="1.0"/>
+								</Texture>
+								<Texture parentKey="IconSelectorPopupNameRight" file="Interface\ClassTrainerFrame\UI-ClassTrainer-FilterBorder">
+									<Size x="12" y="29"/>
+									<Anchors><Anchor point="LEFT" relativeKey="$parent.IconSelectorPopupNameMiddle" relativePoint="RIGHT"/></Anchors>
+									<TexCoords left="0.90625" right="1.0" top="0" bottom="1.0"/>
+								</Texture>
+							</Layer>
+						</Layers>
+						<Scripts>
+							<OnTextChanged>self:OnTextChanged()</OnTextChanged>
+							<OnEscapePressed>self:OnEscapePressed()</OnEscapePressed>
+							<OnEnterPressed>self:OnEnterPressed()</OnEnterPressed>
+						</Scripts>
+						<FontString inherits="ChatFontNormal"/>
+					</EditBox>
+					<Button parentKey="IconTypeDropdown" inherits="WowStyle1DropdownTemplate">
+						<Anchors><Anchor point="TOPRIGHT" x="-44" y="-68"/></Anchors>
+					</Button>
+					<Button parentKey="OkayButton" inherits="UIPanelButtonTemplate" text="OKAY">
+						<Size x="78" y="22"/>
+						<Anchors><Anchor point="BOTTOMRIGHT" x="-96" y="13"/></Anchors>
+					</Button>
+					<Button parentKey="CancelButton" inherits="UIPanelButtonTemplate" text="CANCEL">
+						<Size x="78" y="22"/>
+						<Anchors><Anchor point="BOTTOMRIGHT" x="-13" y="13"/></Anchors>
+					</Button>
+				</Frames>
+			</Frame>
+			<Frame parentKey="IconSelector" mixin="ModernUIIconSelectorMixin" frameStrata="HIGH">
+				<Size x="494" y="361"/>
+				<Anchors><Anchor point="TOPLEFT" x="21" y="-97"/></Anchors>
+				<Scripts>
+					<OnLoad>self:OnLoad()</OnLoad>
+					<OnShow>self:OnShow()</OnShow>
+				</Scripts>
+			</Frame>
+		</Frames>
+		<Scripts>
+			<OnLoad>
+				self.BorderBox.IconSelectionText:SetText(MACRO_POPUP_CHOOSE_ICON or "")
+				if self.OnLoad then self:OnLoad() end
+			</OnLoad>
+			<OnShow>if self.OnShow then self:OnShow() end</OnShow>
+			<OnHide>if self.OnHide then self:OnHide() end</OnHide>
+			<OnEvent>if self.OnEvent then self:OnEvent(event, ...) end</OnEvent>
+		</Scripts>
+	</Frame>
 </Ui>

@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <cstdint>
 #include "Engine/Source/Frame/CSimpleRender.h"
+#include "Engine/Source/Frame/ModernUIMarkup.h"
 #include <malloc.h>
 #include <cctype>
 #include <cstring>
@@ -1282,6 +1283,9 @@ void CSimpleFontString::SetText(const char* text, int32_t process) {
     if (text && process) {
         text = LanguageProcess(text);
     }
+
+    // ModernUI: modern atlas icons and named colours, converted to markup this client draws.
+    text = ModernUI_ConvertMarkup(text);
 
     if ((!text || !*text) && (!this->m_text || !*this->m_text)) {
         return;

@@ -27,6 +27,13 @@ def kind(r):
     if 'string' in low or 'atlas' in low or low in ('wowguid','guid'): return 's'
     if low in ('number','luaindex','time_t','size','fileid','uimapid','bigint','bigufloat','biginteger','singlenumber','uidisplayindex','unknown') or low.endswith('id') or 'int' in low or 'float' in low or 'number' in low or 'time' in low or 'index' in low or 'count' in low:
         return '0'
+    if low in ('uiunit','uifontheight','normalizedvalue','singlecolorvalue','tbfflags','wowmoney','soundhandle') or low.startswith('duration') and 'primitive' in low or low in ('durationseconds','durationsecondsdouble'):
+        return '0'
+    if low in ('justifyhorizontal','justifyvertical','drawlayer','framestrata','orientation','simplebuttonstatetoken'): return 's'
+    if low in ('colorrgb','colorrgba'): return 'c'
+    if low == 'vector2': return 'v'
+    if low == 'vector3': return 'w'
+    if low in ('uirect','lfgroles'): return 't'
     if 'mixin' in low or 'function' in low or 'callback' in low: return 'n'
     return 'n'
 funcs=[]; methods=[]

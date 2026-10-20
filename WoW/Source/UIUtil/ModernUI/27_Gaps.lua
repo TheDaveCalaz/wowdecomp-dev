@@ -949,3 +949,59 @@ if type(StaticPopup_OnUpdate) == "function" then
 		return onUpdate(dialog, elapsed)
 	end
 end
+
+-- Modern scroll frame templates reach their scroll bar and its buttons by key (frame.ScrollBar,
+-- ScrollBar.ScrollUpButton, button.Normal...); this client's templates name them instead. Every template
+-- scroll frame runs ScrollFrame_OnLoad, so the keys are added there.
+do
+	local function keyButton(button)
+		if button then
+			button.Normal = button.Normal or button:GetNormalTexture()
+			button.Pushed = button.Pushed or button:GetPushedTexture()
+			button.Disabled = button.Disabled or button:GetDisabledTexture()
+			button.Highlight = button.Highlight or button:GetHighlightTexture()
+		end
+		return button
+	end
+	function ModernUI_KeyScrollFrame(frame)
+		local name = frame and frame.GetName and frame:GetName()
+		if not name then
+			return
+		end
+		local bar = _G[name .. "ScrollBar"]
+		if bar then
+			frame.ScrollBar = frame.ScrollBar or bar
+			local barName = bar:GetName()
+			bar.ScrollUpButton = bar.ScrollUpButton or keyButton(_G[barName .. "ScrollUpButton"])
+			bar.ScrollDownButton = bar.ScrollDownButton or keyButton(_G[barName .. "ScrollDownButton"])
+			bar.ThumbTexture = bar.ThumbTexture or (bar.GetThumbTexture and bar:GetThumbTexture())
+		end
+		frame.ScrollChild = frame.ScrollChild or (frame.GetScrollChild and frame:GetScrollChild())
+	end
+	if type(ScrollFrame_OnLoad) == "function" then
+		local onLoad = ScrollFrame_OnLoad
+		ScrollFrame_OnLoad = function(self, ...)
+			onLoad(self, ...)
+			ModernUI_KeyScrollFrame(self)
+		end
+	end
+end
+
+-- Environment helpers Blizzard's shared code uses.
+define("GetCurrentEnvironment", function() return getfenv(2) end)
+define("AddSourceLocationExclude", function() end)
+define("SwapToGlobalEnvironment", function() end)
+
+-- Item quality and class-list helpers of later clients.
+for name, value in pairs({ LE_ITEM_QUALITY_POOR = 0, LE_ITEM_QUALITY_COMMON = 1, LE_ITEM_QUALITY_UNCOMMON = 2,
+	LE_ITEM_QUALITY_RARE = 3, LE_ITEM_QUALITY_EPIC = 4, LE_ITEM_QUALITY_LEGENDARY = 5, LE_ITEM_QUALITY_ARTIFACT = 6,
+	LE_ITEM_QUALITY_HEIRLOOM = 7, LE_ITEM_QUALITY_WOW_TOKEN = 8 }) do
+	define(name, value)
+end
+define("FillLocalizedClassList", function(list, female)
+	local source = female and LOCALIZED_CLASS_NAMES_FEMALE or LOCALIZED_CLASS_NAMES_MALE
+	for token, name in pairs(source or {}) do
+		list[token] = name
+	end
+	return list
+end)

@@ -2,7 +2,8 @@
 local _G = _G
 local type, rawget, unpack, select, ipairs, pairs = type, rawget, unpack, select, ipairs, pairs
 
--- One shared answer per return signature ("b0t" = false, 0, a new table).
+-- One shared answer per return signature ("b0t" = false, 0, a new table; c = a white colour, v and w = zero
+-- 2D and 3D vectors).
 local answers = {}
 local function answerFor(rets)
 	if rets == "" then
@@ -14,7 +15,7 @@ local function answerFor(rets)
 	end
 	local n = #rets
 	local f
-	if not rets:find("t", 1, true) then
+	if not rets:find("[tcvw]") then
 		local values = {}
 		for i = 1, n do
 			local c = rets:sub(i, i)
@@ -26,7 +27,9 @@ local function answerFor(rets)
 			local values = {}
 			for i = 1, n do
 				local c = rets:sub(i, i)
-				values[i] = (c == "b" and false) or (c == "0" and 0) or (c == "s" and "") or (c == "t" and {}) or nil
+				values[i] = (c == "b" and false) or (c == "0" and 0) or (c == "s" and "") or (c == "t" and {})
+					or (c == "c" and CreateColor(1, 1, 1, 1)) or (c == "v" and CreateVector2D(0, 0))
+					or (c == "w" and CreateVector3D(0, 0, 0)) or nil
 			end
 			return unpack(values, 1, n)
 		end

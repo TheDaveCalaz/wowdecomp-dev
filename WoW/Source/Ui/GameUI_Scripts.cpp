@@ -19,6 +19,7 @@
 #include "Engine/Source/Frame/CSimpleTop.h"
 #include "Engine/Source/Frame/SimpleFrameScript.h"
 #include "Engine/Source/FrameScript/FrameScript.h"
+#include "Engine/Source/Frame/ModernUIMarkup.h"
 #include "Engine/Source/FrameScript/FrameScript_Object.h"
 #include "Engine/Source/FrameXML/FrameXML.h"
 #include "Engine/Source/FrameXML/LoadXML.h"
@@ -1555,6 +1556,55 @@ static bool ModernUI_DataPath(const char* key, char* path, size_t size) {
 
     snprintf(path, size, "WTF\\ModernUI\\%s.txt", key);
     return true;
+}
+
+// Not in the original client: ModernUI_Log(message) writes a line to Logs\LuaErrors.log, and
+// ModernUI_DebugPlayerGUID() -> loginGUID, activePlayerGUID, playerObjectExists (hex strings) reports where the
+// player's GUID stands, for diagnosing AddOns that read UnitGUID("player") while loading.
+WOWGUID ModernUI_GetLoginGUID();
+
+// ModernUI_RegisterAtlas(name, file, width, height, left, right, top, bottom) and
+// ModernUI_RegisterColorName(name, r, g, b): what |A:name|a and |cnNAME: markup in text draw as.
+static int32_t Script_ModernUI_RegisterAtlas(lua_State* L) {
+    if (!lua_isstring(L, 1) || !lua_isstring(L, 2)) {
+        return 0;
+    }
+
+    ModernUI_RegisterAtlas(lua_tolstring(L, 1, nullptr), lua_tolstring(L, 2, nullptr),
+        static_cast<float>(lua_tonumber(L, 3)), static_cast<float>(lua_tonumber(L, 4)),
+        lua_isnumber(L, 5) ? static_cast<float>(lua_tonumber(L, 5)) : 0.0f,
+        lua_isnumber(L, 6) ? static_cast<float>(lua_tonumber(L, 6)) : 1.0f,
+        lua_isnumber(L, 7) ? static_cast<float>(lua_tonumber(L, 7)) : 0.0f,
+        lua_isnumber(L, 8) ? static_cast<float>(lua_tonumber(L, 8)) : 1.0f);
+    return 0;
+}
+
+static int32_t Script_ModernUI_RegisterColorName(lua_State* L) {
+    if (!lua_isstring(L, 1)) {
+        return 0;
+    }
+
+    ModernUI_RegisterColorName(lua_tolstring(L, 1, nullptr), static_cast<float>(lua_tonumber(L, 2)),
+        static_cast<float>(lua_tonumber(L, 3)), static_cast<float>(lua_tonumber(L, 4)));
+    return 0;
+}
+
+static int32_t Script_ModernUI_Log(lua_State* L) {
+    if (lua_isstring(L, 1)) {
+        FrameScript_LogError(lua_tolstring(L, 1, nullptr));
+    }
+
+    return 0;
+}
+
+static int32_t Script_ModernUI_DebugPlayerGUID(lua_State* L) {
+    char buffer[32];
+    SStrPrintf(buffer, sizeof(buffer), "0x%016llX", static_cast<unsigned long long>(ModernUI_GetLoginGUID().m_guid));
+    lua_pushstring(L, buffer);
+    SStrPrintf(buffer, sizeof(buffer), "0x%016llX", static_cast<unsigned long long>(ClntObjMgrGetActivePlayer().m_guid));
+    lua_pushstring(L, buffer);
+    lua_pushboolean(L, ClntObjMgrObjectPtr(ClntObjMgrGetActivePlayer(), TYPEMASK_PLAYER, __FILE__, __LINE__) != nullptr);
+    return 3;
 }
 
 static int32_t Script_ModernUI_LoadData(lua_State* L) {
@@ -6456,6 +6506,10 @@ static FrameScript_Method s_ScriptFunctions[] = {
     { "GetCVarInfo", &Script_GetCVarInfo },
     { "ConsoleGetAllCommands", &Script_ConsoleGetAllCommands },
     { "ModernUI_LoadData", &Script_ModernUI_LoadData },
+    { "ModernUI_Log", &Script_ModernUI_Log },
+    { "ModernUI_RegisterAtlas", &Script_ModernUI_RegisterAtlas },
+    { "ModernUI_RegisterColorName", &Script_ModernUI_RegisterColorName },
+    { "ModernUI_DebugPlayerGUID", &Script_ModernUI_DebugPlayerGUID },
     { "ModernUI_SaveData", &Script_ModernUI_SaveData },
     { "SetCVar", &Script_SetCVar },
     { "GetCVar", &Script_GetCVar },

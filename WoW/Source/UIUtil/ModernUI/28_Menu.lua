@@ -65,7 +65,6 @@ function Description:SetTag() end
 function Description:SetScrollMode() end
 function Description:SetGridMode() end
 function Description:SetMinimumWidth() end
-function Description:AddInitializer() end
 function Description:SetData(data) self.data = data end
 function Description:GetData() return self.data end
 function Description:SetRadio() end
@@ -74,12 +73,64 @@ function Description:SetSelectionIgnored() end
 function Description:SetOnEnter() end
 function Description:SetOnLeave() end
 function Description:SetCanSelect() end
-function Description:SetFinalInitializer() end
 function Description:QueueTitle(text) return self:CreateTitle(text) end
 function Description:QueueDivider() return self:CreateDivider() end
 function Description:QueueSpacer() return self:CreateDivider() end
 function Description:ClearQueuedDescriptions() end
 function Description:EnumerateElementDescriptions() return ipairs(self.children) end
+-- The rest of the modern description interface. Menus here are drawn by this client's dropdowns, so
+-- frame initializers and resetters are kept but have no frames to run on.
+function Description:AddInitializer(fn) self.initializers = self.initializers or {} table.insert(self.initializers, fn) end
+function Description:GetInitializers() return self.initializers or {} end
+function Description:AddResetter(fn) self.resetters = self.resetters or {} table.insert(self.resetters, fn) end
+function Description:GetResetters() return self.resetters or {} end
+function Description:SetFinalInitializer(fn) self.finalInitializer = fn end
+function Description:GetFinalInitializer() return self.finalInitializer end
+function Description:Insert(description, index)
+	if type(description) ~= "table" then
+		return description
+	end
+	if getmetatable(description) ~= Description then
+		setmetatable(description, Description)
+		description.children = description.children or {}
+	end
+	table.insert(self.children, index or (#self.children + 1), description)
+	return description
+end
+function Description:CanOpenSubmenu() return #self.children > 0 end
+function Description:ForceOpenSubmenu() end
+function Description:DeactivateSubmenu() end
+function Description:SetMaximumWidth() end
+function Description:SetSharedMenuProperties(properties) self.sharedProperties = properties end
+function Description:GetSharedMenuProperties() return self.sharedProperties or {} end
+function Description:DisableCompositor() end
+function Description:IsCompositorEnabled() return false end
+function Description:CanReacquireFrames() return false end
+function Description:DisableReacquireFrames() end
+function Description:SetElementFactory(factory) self.factory = factory end
+function Description:CallFactory() end
+function Description:SendResponseToMenu() end
+function Description:SetFinalizeGridLayout() end
+function Description:GetMenuMixin() return nil end
+function Description:SetTooltipFrame(frame) self.tooltipFrame = frame end
+function Description:GetTooltipFrame() return self.tooltipFrame or GameTooltip end
+function Description:SetResponder(fn) self.responder = fn end
+function Description:SetShouldPlaySoundOnCheckboxClick() end
+function Description:SetShouldRespondIfSubmenu() end
+function Description:SetSoundKit() end
+function Description:SetTitleAndTextTooltip(title, text)
+	self.tooltip = function(tooltip) tooltip:AddLine(title or "", 1, 1, 1) if text then tooltip:AddLine(text, nil, nil, nil, true) end end
+end
+for _, kind in ipairs({ "Acquired", "Changed", "Released", "Response" }) do
+	Description["AddMenu" .. kind .. "Callback"] = function(self, fn)
+		self.callbacks = self.callbacks or {}
+		self.callbacks[kind] = self.callbacks[kind] or {}
+		table.insert(self.callbacks[kind], fn)
+	end
+	Description["GetMenu" .. kind .. "Callbacks"] = function(self)
+		return self.callbacks and self.callbacks[kind] or {}
+	end
+end
 function Description:HasElements() return #self.children > 0 end
 
 local function selected(element)
@@ -185,8 +236,143 @@ function MenuUtil.HideTooltip() GameTooltip:Hide() end
 function MenuUtil.GetElementText(description) return description and description.text end
 function MenuUtil.SetElementText(description, text) if description then description.text = text end end
 function MenuUtil.CreateRootMenuDescription() return newDescription("root") end
-function MenuUtil.TraverseMenu() end
+function MenuUtil.TraverseMenu(description, fn, condition)
+	for _, element in ipairs(description and description.children or {}) do
+		if not condition or condition(element) then
+			fn(element)
+		end
+		MenuUtil.TraverseMenu(element, fn, condition)
+	end
+end
+function MenuUtil.GetSelections(description, condition)
+	local list = {}
+	MenuUtil.TraverseMenu(description, function(element)
+		if (element.kind == "radio" or element.kind == "checkbox") and selected(element) then
+			list[#list + 1] = element
+		end
+	end, condition)
+	return list
+end
+-- Free-standing descriptions, inserted later with description:Insert().
+function MenuUtil.CreateButton(text, callback, data)
+	local element = newDescription("button", text, data)
+	element.callback = callback
+	return element
+end
+function MenuUtil.CreateCheckbox(text, isSelected, setSelected, data)
+	local element = newDescription("checkbox", text, data)
+	element.isSelected, element.setSelected = isSelected, setSelected
+	return element
+end
+function MenuUtil.CreateRadio(text, isSelected, setSelected, data)
+	local element = newDescription("radio", text, data)
+	element.isSelected, element.setSelected = isSelected, setSelected
+	return element
+end
+function MenuUtil.CreateHighlightButton(text, data) return MenuUtil.CreateButton(text, nil, data) end
+function MenuUtil.CreateHighlightRadio(text, isSelected, setSelected, data) return MenuUtil.CreateRadio(text, isSelected, setSelected, data) end
+function MenuUtil.CreateTitle(text) return newDescription("title", text) end
+function MenuUtil.CreateDivider() return newDescription("divider", "") end
+function MenuUtil.CreateSpacer() return newDescription("divider", "") end
+function MenuUtil.CreateTemplate() return newDescription("template", "") end
+function MenuUtil.CreateFrame() return newDescription("template", "") end
+function MenuUtil.CreateColorSwatch(text, callback) return MenuUtil.CreateButton(text, callback) end
+function MenuUtil.ShowTooltipEx(owner, tooltip, func, ...)
+	tooltip:SetOwner(owner, "ANCHOR_RIGHT")
+	func(tooltip, ...)
+	tooltip:Show()
+end
+function MenuUtil.HideTooltipEx(owner, tooltip)
+	if tooltip:GetOwner() == owner then
+		tooltip:Hide()
+	end
+end
+function MenuUtil.HookTooltipScripts(owner, func)
+	local tooltip = GameTooltip
+	owner:HookScript("OnEnter", function()
+		tooltip:SetOwner(owner, "ANCHOR_RIGHT")
+		func(tooltip)
+		tooltip:Show()
+	end)
+	owner:HookScript("OnLeave", function()
+		if tooltip:GetOwner() == owner then
+			tooltip:Hide()
+		end
+	end)
+end
+local function dropdownMenu(dropdown, build)
+	if dropdown and dropdown.SetupMenu then
+		dropdown:SetupMenu(function(_, root) build(root) end)
+	end
+end
+function MenuUtil.CreateButtonContextMenu(owner, ...) return MenuUtil.CreateButtonMenu(owner, ...) end
+function MenuUtil.CreateCheckboxMenu(dropdown, isSelected, setSelected, ...)
+	local entries = { ... }
+	dropdownMenu(dropdown, function(root)
+		for _, entry in ipairs(entries) do root:CreateCheckbox(entry[1], isSelected, setSelected, entry[2]) end
+	end)
+end
+function MenuUtil.CreateRadioMenu(dropdown, isSelected, setSelected, ...)
+	local entries = { ... }
+	dropdownMenu(dropdown, function(root)
+		for _, entry in ipairs(entries) do root:CreateRadio(entry[1], isSelected, setSelected, entry[2]) end
+	end)
+end
+local function enumEntries(enum, translate, order)
+	local list = {}
+	if order then
+		for _, value in ipairs(order) do list[#list + 1] = { translate(value), value } end
+	else
+		for _, value in pairs(enum) do list[#list + 1] = { translate(value), value } end
+		table.sort(list, function(a, b) return a[2] < b[2] end)
+	end
+	return list
+end
+function MenuUtil.CreateEnumRadioMenu(dropdown, enum, translate, isSelected, setSelected, order)
+	return MenuUtil.CreateRadioMenu(dropdown, isSelected, setSelected, unpack(enumEntries(enum, translate, order)))
+end
+function MenuUtil.CreateEnumRadioContextMenu(owner, enum, translate, isSelected, setSelected, order)
+	return MenuUtil.CreateRadioContextMenu(owner, isSelected, setSelected, unpack(enumEntries(enum, translate, order)))
+end
 _G.MenuUtil = MenuUtil
+
+-- Menu templates attach extra buttons to menu entries' frames. Entries here are this client's dropdown
+-- buttons, which have no room for them; the attachments are made but kept hidden.
+if _G.MenuTemplates == nil then
+	local function hiddenButton(parent)
+		local button = CreateFrame("Button", nil, parent)
+		button:SetWidth(16)
+		button:SetHeight(16)
+		button:Hide()
+		return button
+	end
+	local MenuTemplates = {}
+	MenuTemplates.AttachAutoHideGearButton = hiddenButton
+	MenuTemplates.AttachAutoHideCancelButton = hiddenButton
+	MenuTemplates.AttachUtilityButton = hiddenButton
+	MenuTemplates.AttachBasicButton = hiddenButton
+	MenuTemplates.AttachNewFeatureFrame = hiddenButton
+	MenuTemplates.AttachTexture = function(parent) return parent:CreateTexture(nil, "ARTWORK") end
+	MenuTemplates.SetUtilityButtonAnchor = function() end
+	MenuTemplates.SetUtilityButtonClickHandler = function() end
+	MenuTemplates.SetUtilityButtonLockedEnabledState = function() end
+	MenuTemplates.SetUtilityButtonTooltipText = function() end
+	MenuTemplates.SetHierarchyEnabled = function() end
+	MenuTemplates.RecurseSetupFontString = function() end
+	MenuTemplates.CreateSelectionTextures = function() end
+	MenuTemplates.CreateButton = MenuUtil.CreateButton
+	MenuTemplates.CreateCheckbox = MenuUtil.CreateCheckbox
+	MenuTemplates.CreateRadio = MenuUtil.CreateRadio
+	MenuTemplates.CreateHighlightButton = MenuUtil.CreateHighlightButton
+	MenuTemplates.CreateHighlightRadio = MenuUtil.CreateHighlightRadio
+	MenuTemplates.CreateTitle = MenuUtil.CreateTitle
+	MenuTemplates.CreateDivider = MenuUtil.CreateDivider
+	MenuTemplates.CreateSpacer = MenuUtil.CreateSpacer
+	MenuTemplates.CreateTemplate = MenuUtil.CreateTemplate
+	MenuTemplates.CreateFrame = MenuUtil.CreateFrame
+	MenuTemplates.CreateColorSwatch = MenuUtil.CreateColorSwatch
+	_G.MenuTemplates = MenuTemplates
+end
 
 _G.Menu = _G.Menu or {
 	ModifyMenu = function() end,

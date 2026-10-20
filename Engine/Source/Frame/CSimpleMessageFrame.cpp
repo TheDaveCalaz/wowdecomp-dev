@@ -1,3 +1,4 @@
+#include "Engine/Source/Frame/ModernUIMarkup.h"
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -248,6 +249,8 @@ bool CSimpleMessageFrame::IsA(const char* typeName) {
 // VERIFY: 9bdafef4 manual
 // OFFSET: 0x009686C0
 void CSimpleMessageFrame::AddMessage(const char* text, const CImVector& color) {
+    text = ModernUI_ConvertMarkup(text);
+
     if (!text) {
         SErrSetLastError(STORM_ERROR_INVALID_PARAMETER);
         return;

@@ -81,6 +81,9 @@ function securecall(f, ...) local r = {pcall(f, ...)} if not r[1] then print("SE
 function debugstack() return "here" end
 function hooksecurefunc(name, f) local o = _G[name]; _G[name] = function(...) local r = {o(...)}; f(...); return unpack(r) end end
 function IsLoggedIn() return false end
+SlashCmdList = {}
+function UnitRace() return "Human", "Human" end
+function UnitSex() return 2 end
 function IsAddOnLoaded() return nil end
 function strsplit(d, s) local t = {} for p in (s..d):gmatch("(.-)"..d:gsub("%p","%%%0")) do t[#t+1]=p end return unpack(t) end
 function GetCVar(n) if n == "gxResolution" then return "1920x1080" end return "EU" end

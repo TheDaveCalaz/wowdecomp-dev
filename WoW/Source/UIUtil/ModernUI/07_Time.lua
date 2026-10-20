@@ -232,30 +232,4 @@ end
 -- that builds on them loads; the features themselves need the matching frames, which come later.
 define("ModelSceneActorMixin", {})
 define("ModelSceneMixin", {})
-define("MapCanvasDataProviderMixin", {
-	OnAdded = function(self, owningMap) self.owningMap = owningMap end,
-	OnRemoved = function(self) self.owningMap = nil end,
-	GetMap = function(self) return self.owningMap end,
-	RemoveAllData = function() end,
-	RefreshAllData = function() end,
-	OnShow = function() end,
-	OnHide = function() end,
-	OnMapChanged = function(self) self:RefreshAllData() end,
-	OnEvent = function() end,
-	SignalEvent = function() end,
-	RegisterEvent = function() end,
-	UnregisterEvent = function() end,
-})
-define("MapCanvasPinMixin", {
-	OnLoad = function() end,
-	OnAcquired = function() end,
-	OnReleased = function() end,
-	SetPosition = function(self, x, y) self.normalizedX, self.normalizedY = x, y end,
-	GetPosition = function(self) return self.normalizedX, self.normalizedY end,
-	UseFrameLevelType = function() end,
-	SetScalingLimits = function() end,
-	GetMap = function(self) return self.owningMap end,
-	ApplyCurrentScale = function() end,
-	ApplyCurrentAlpha = function() end,
-	SetIgnoreGlobalPinScale = function() end,
-})
+-- The map canvas mixins are Blizzard's own, in 32_MapCanvas.lua.

@@ -232,7 +232,28 @@ end
 
 if _G.C_ColorUtil == nil then
 	_G.C_ColorUtil = {
-		WrapTextInColor = function(text, color) return color:WrapTextInColorCode(text) end,
-		GenerateTextColorCode = function(color) return color:GenerateHexColorMarkup() end,
+		-- The colour as eight hex digits, alpha first (what ColorMixin:GenerateHexColor returns).
+		GenerateTextColorCode = function(color)
+			local function byte(v) v = math.floor((v or 0) * 255 + 0.5) return v < 0 and 0 or (v > 255 and 255 or v) end
+			return ("%02x%02x%02x%02x"):format(byte(color.a or 1), byte(color.r), byte(color.g), byte(color.b))
+		end,
+		WrapTextInColor = function(text, color) return "|c" .. C_ColorUtil.GenerateTextColorCode(color) .. text .. "|r" end,
 	}
+end
+
+-- Named colours in text (|cnNAME:text|r): the client's text renderer learns every global colour, now and
+-- again once AddOns have loaded (they define colours of their own).
+if ModernUI_RegisterColorName then
+	local function registerColors()
+		for name, value in pairs(_G) do
+			if type(name) == "string" and type(value) == "table" and name:find("COLOR", 1, true)
+				and type(rawget(value, "r")) == "number" then
+				ModernUI_RegisterColorName(name, value.r, value.g or 0, value.b or 0)
+			end
+		end
+	end
+	registerColors()
+	local frame = CreateFrame("Frame")
+	frame:RegisterEvent("PLAYER_LOGIN")
+	frame:SetScript("OnEvent", registerColors)
 end

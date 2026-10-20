@@ -1,3 +1,4 @@
+#include "Engine/Source/Frame/ModernUIMarkup.h"
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -828,6 +829,8 @@ void CSimpleMessageScrollFrame::SetInsertMode(SimpleMessageFrameInsertMode mode)
 // VERIFY: b857c22a manual
 // OFFSET: 0x0096A9F0
 void CSimpleMessageScrollFrame::AddMessage(const char* text, const CImVector& color, int32_t typeID, int32_t addToTop, int32_t accessID, int32_t extraData) {
+    text = ModernUI_ConvertMarkup(text);
+
     if (!text) {
         SErrSetLastError(STORM_ERROR_INVALID_PARAMETER);
         return;

@@ -250,6 +250,8 @@ end)
 add(frameTypes, "CreateLine", function(self, name, layer, template, subLevel)
 	return self:CreateTexture(name, layer, template)
 end)
+add(frameTypes, "SetForbidden", noop)
+add(frameTypes, "IsForbidden", falseFn)
 add(frameTypes, "GetRaisedFrameLevel", function(self) return self:GetFrameLevel() end)
 add(frameTypes, "Raise", function(self) self:SetFrameLevel(self:GetFrameLevel() + 1) end)
 add(frameTypes, "Lower", function(self) self:SetFrameLevel(math.max(0, self:GetFrameLevel() - 1)) end)
@@ -269,8 +271,21 @@ local atlasFallback = {
 	Options_Tab_Active_Left = { "Interface\\ChatFrame\\ChatFrameTab-SelectedLeft", 16, 32 },
 	Options_Tab_Active_Middle = { "Interface\\ChatFrame\\ChatFrameTab-SelectedMid", 44, 32 },
 	Options_Tab_Active_Right = { "Interface\\ChatFrame\\ChatFrameTab-SelectedRight", 16, 32 },
+	NPE_LeftClick = { "Interface\\TutorialFrame\\UI-TUTORIAL-FRAME", 76, 101, 0.0019531, 0.1484375, 0.4257813, 0.6210938 },
+	NPE_RightClick = { "Interface\\TutorialFrame\\UI-TUTORIAL-FRAME", 76, 101, 0.0019531, 0.1484375, 0.6269531, 0.8222656 },
+	["newplayertutorial-icon-mouse-leftbutton"] = { "Interface\\TutorialFrame\\UI-TUTORIAL-FRAME", 76, 101, 0.0019531, 0.1484375, 0.4257813, 0.6210938 },
+	["newplayertutorial-icon-mouse-rightbutton"] = { "Interface\\TutorialFrame\\UI-TUTORIAL-FRAME", 76, 101, 0.0019531, 0.1484375, 0.6269531, 0.8222656 },
+	["newplayertutorial-icon-mouse-middlebutton"] = { "Interface\\TutorialFrame\\UI-TUTORIAL-FRAME", 76, 101, 0.0019531, 0.1484375, 0.2246094, 0.4199219 },
+	["editmode-new-layout-plus"] = { "Interface\\Buttons\\UI-PlusButton-Up", 16, 16 },
+	["communities-icon-addchannelplus"] = { "Interface\\Buttons\\UI-PlusButton-Up", 16, 16 },
 }
 _G.ModernUI_AtlasFallback = _G.ModernUI_AtlasFallback or atlasFallback
+-- Text markup (|A:name|a) draws the same textures; the client's text renderer learns them here.
+if ModernUI_RegisterAtlas then
+	for name, entry in pairs(_G.ModernUI_AtlasFallback) do
+		ModernUI_RegisterAtlas(name, entry[1], entry[2], entry[3], entry[4] or 0, entry[5] or 1, entry[6] or 0, entry[7] or 1)
+	end
+end
 addTo("Texture", "SetAtlas", function(self, atlas, useAtlasSize)
 	stateOf(self).atlas = atlas
 	local entry = atlas and _G.ModernUI_AtlasFallback[atlas]
@@ -312,6 +327,13 @@ addTo("FontString", "GetTextScale", function() return 1 end)
 addTo("FontString", "SetRotation", noop)
 addTo("FontString", "GetRotation", function() return 0 end)
 addTo("FontString", "GetUnboundedStringWidth", function(self) return self:GetStringWidth() end)
+addTo("FontString", "GetWrappedWidth", function(self)
+	local width, limit = self:GetStringWidth() or 0, self:GetWidth() or 0
+	if limit > 0 and width > limit then
+		return limit
+	end
+	return width
+end)
 addTo("FontString", "GetLineHeight", function(self)
 	local _, height = self:GetFont()
 	return height or 12
@@ -886,6 +908,7 @@ end
 -- driven from Lua are: OnModelLoaded runs after a model is set.
 
 local extraScripts = setmetatable({}, { __mode = "k" })
+local mouseScripts = { OnMouseDown = true, OnMouseUp = true, OnEnter = true, OnLeave = true, OnDragStart = true }
 
 for _, index in ipairs(frameTypes) do
 	local SetScript, GetScript, HookScript, HasScript = rawget(index, "SetScript"), rawget(index, "GetScript"), rawget(index, "HookScript"), rawget(index, "HasScript")
@@ -896,6 +919,12 @@ for _, index in ipairs(frameTypes) do
 		end
 		index.SetScript = function(self, script, func)
 			if script == "OnEvent" or known(self, script) then
+				-- Modern clients take mouse input on a frame once it has a mouse handler.
+				if func and mouseScripts[script] and self.EnableMouse and not self:IsMouseEnabled() then
+					self:EnableMouse(true)
+				elseif func and script == "OnMouseWheel" and self.EnableMouseWheel then
+					self:EnableMouseWheel(true)
+				end
 				return SetScript(self, script, func)
 			end
 			local scripts = extraScripts[self] or {}
@@ -1223,6 +1252,29 @@ do
 	end
 end
 
+-- This client's own bag and bank buttons are made by FrameXML, not CreateFrame; they get the parts too.
+do
+	local function upgradeBlizzardButtons()
+		for bag = 1, NUM_CONTAINER_FRAMES or 13 do
+			for slot = 1, MAX_CONTAINER_ITEMS or 36 do
+				local button = _G["ContainerFrame" .. bag .. "Item" .. slot]
+				if button then
+					modernItemButton(button)
+				end
+			end
+		end
+		for slot = 1, NUM_BANKGENERIC_SLOTS or 28 do
+			local button = _G["BankFrameItem" .. slot]
+			if button then
+				modernItemButton(button)
+			end
+		end
+	end
+	upgradeBlizzardButtons()
+	local frame = CreateFrame("Frame")
+	frame:RegisterEvent("PLAYER_LOGIN")
+	frame:SetScript("OnEvent", upgradeBlizzardButtons)
+end
 
 -- The generated API surface (95_ApiSurface.lua) adds documented methods to these tables.
 _G.ModernUI_WidgetMethodTables = methodTables
