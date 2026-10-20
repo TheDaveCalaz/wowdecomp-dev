@@ -924,3 +924,11 @@ define("CAMERA_TRANSITION_TYPE_INTERPOLATION", 2)
 define("ACCOUNT_WIDE_FONT_COLOR", CreateColor(0, 0.8, 1))
 
 define("GetToolTipInfo", function() return 0, 0, 0, 0, 0, 0, 0, 0 end)
+
+-- The 3.3.5 group loot frames name their icon frames; modern code (Pawn) reaches them by key.
+for i = 1, NUM_GROUP_LOOT_FRAMES or 4 do
+	local frame = _G["GroupLootFrame" .. i]
+	if frame and rawget(frame, "IconFrame") == nil then
+		frame.IconFrame = _G["GroupLootFrame" .. i .. "IconFrame"]
+	end
+end
