@@ -192,110 +192,263 @@ do
 end
 
 -- C_Map -------------------------------------------------------------------------------------------
--- Map IDs here are this client's own map area IDs (the ones GetCurrentMapAreaID returns).
 
 do
 	local set = namespace("C_Map")
 
-	-- Run fn with the world map switched to mapID, then put the map back the way the player had it.
-	local function onMap(mapID, fn)
-		local previous = GetCurrentMapAreaID()
-		local previousLevel = GetCurrentMapDungeonLevel()
-		if mapID then
-			SetMapByID(mapID)
-		else
-			SetMapToCurrentZone()
+	-- Map IDs. Modern addons use the Wrath Classic map IDs (uiMapID: Elwynn Forest 1429, Borean Tundra 114);
+	-- this client numbers its maps differently (GetCurrentMapAreaID). Each of this client's maps is given
+	-- its modern ID through its AreaTable area; maps with no modern counterpart keep their own number
+	-- plus 100000. Every lookup reads the map data directly: the open world map is never changed.
+	local COSMIC, AZEROTH = 946, 947
+	local CONTINENT_UIMAP = { [1] = 1414, [0] = 1415, [530] = 1945, [571] = 113 }
+	local AREA_UIMAP = {
+		[1]=1426,[3]=1418,[4]=1419,[8]=1435,[10]=1431,[11]=1437,[12]=1429,[14]=1411,[15]=1445,[16]=1447,[17]=1413,
+		[28]=1422,[33]=1434,[36]=1416,[38]=1432,[40]=1436,[41]=1430,[44]=1433,[45]=1417,[46]=1428,[47]=1425,[51]=1427,
+		[65]=115,[66]=121,[67]=120,[85]=1420,[130]=1421,[139]=1423,[141]=1438,[148]=1439,[206]=133,[209]=310,
+		[210]=118,[215]=1412,[267]=1424,[331]=1440,[357]=1444,[361]=1448,[394]=116,[400]=1441,[405]=1443,[406]=1442,
+		[440]=1446,[490]=1449,[491]=301,[493]=1450,[495]=117,[616]=198,[618]=1452,[717]=225,[718]=279,[719]=221,
+		[721]=226,[722]=300,[796]=302,[1037]=293,[1176]=219,[1196]=137,[1337]=230,[1377]=1451,[1477]=220,[1497]=1458,
+		[1519]=1453,[1537]=1455,[1581]=291,[1583]=253,[1584]=242,[1637]=1454,[1638]=1456,[1657]=1457,[2017]=317,
+		[2057]=306,[2100]=280,[2159]=248,[2366]=273,[2367]=274,[2437]=213,[2557]=234,[2597]=1459,[2677]=287,
+		[2717]=232,[2817]=127,[3277]=1460,[3358]=1461,[3428]=320,[3429]=247,[3430]=1941,[3433]=1942,[3456]=166,
+		[3457]=350,[3483]=1944,[3487]=1954,[3518]=1951,[3519]=1952,[3520]=1948,[3521]=1946,[3522]=1949,[3523]=1953,
+		[3524]=1943,[3525]=1950,[3537]=114,[3557]=1947,[3562]=347,[3606]=329,[3607]=332,[3703]=1955,[3711]=119,
+		[3713]=261,[3714]=246,[3715]=263,[3716]=262,[3717]=265,[3789]=260,[3790]=256,[3791]=258,[3792]=272,[3805]=333,
+		[3820]=1956,[3836]=331,[3845]=334,[3847]=266,[3848]=269,[3849]=267,[3923]=330,[3959]=339,[3979]=113,
+		[4075]=335,[4080]=1957,[4095]=349,[4100]=130,[4120]=370,[4131]=349,[4196]=160,[4197]=123,[4228]=143,
+		[4264]=140,[4265]=129,[4272]=138,[4273]=147,[4277]=159,[4298]=124,[4384]=128,[4395]=125,[4415]=168,[4416]=154,
+		[4493]=155,[4494]=132,[4500]=141,[4560]=126,[4603]=156,[4657]=148,[4706]=217,[4707]=174,[4709]=199,[4710]=169,
+		[4714]=179,[4720]=174,[4722]=172,[4723]=171,[4737]=194,[4742]=170,[4755]=202,[4809]=183,[4812]=186,[4813]=184,
+		[4815]=201,[4820]=185,[4922]=241,[4926]=283,[4945]=297,[4950]=293,[4987]=200,[5004]=322,[5031]=206,[5034]=249,
+		[5035]=325,[5042]=207,[5088]=324,[5094]=286,[5095]=244,[5144]=205,[5145]=204,[5146]=203,[5287]=210,[5334]=294,
+		[5339]=224,[5351]=218,[5389]=245,[5396]=277,[5399]=282,[5416]=276,[5449]=275,[5638]=328,[5695]=327,[5723]=367,
+		[5733]=338,[5786]=370,[5788]=398,[5789]=401,[5790]=403,[5792]=404,[5793]=402,[5794]=405,[5795]=406,[5844]=399,
+		[5861]=407,[5892]=409,[6170]=425,[6176]=427,[6450]=460,[6451]=461,[6452]=462,[6453]=463,[6454]=465,[6455]=467,
+		[6456]=468,[6457]=469,
+	}
+	local CUSTOM_BASE = 100000
+
+	local maps -- uiMapID -> { legacy, name, mapType, parent, instance, left, right, top, bottom, area }
+	local byLegacy -- legacy ID -> uiMapID
+
+	local function load()
+		if maps then
+			return
 		end
-		local a, b, c, d = fn()
-		if WorldMapFrame and WorldMapFrame:IsShown() then
-			SetMapByID(previous)
-			if previousLevel and previousLevel > 0 then
-				SetDungeonMapLevel(previousLevel)
+		maps, byLegacy = {}, {}
+		maps[COSMIC] = { name = "Cosmic", mapType = Enum.UIMapType.Cosmic, parent = 0, instance = -1 }
+		maps[AZEROTH] = { name = "Azeroth", mapType = Enum.UIMapType.World, parent = COSMIC, instance = 0 }
+		maps[COSMIC].name = WORLD_MAP or "World"
+		local legacyIDs = {}
+		if ModernUI_GetAllMapAreaIDs then
+			legacyIDs = { ModernUI_GetAllMapAreaIDs() }
+		end
+		local info = {}
+		for _, legacy in ipairs(legacyIDs) do
+			local name, kind, parent, instance, left, right, top, bottom, area = ModernUI_GetMapAreaInfo(legacy)
+			if name then
+				local uiMapID
+				if kind == "continent" then
+					uiMapID = CONTINENT_UIMAP[instance]
+				else
+					uiMapID = AREA_UIMAP[area]
+				end
+				if not uiMapID or maps[uiMapID] then
+					uiMapID = CUSTOM_BASE + legacy
+				end
+				byLegacy[legacy] = uiMapID
+				local mapType = kind == "continent" and Enum.UIMapType.Continent
+					or kind == "zone" and Enum.UIMapType.Zone or Enum.UIMapType.Dungeon
+				maps[uiMapID] = { legacy = legacy, name = name, mapType = mapType, instance = instance,
+					left = left, right = right, top = top, bottom = bottom, area = area }
+				info[uiMapID] = parent
 			end
 		end
-		return a, b, c, d
+		for uiMapID, parent in pairs(info) do
+			local map = maps[uiMapID]
+			if map.mapType == Enum.UIMapType.Continent then
+				map.parent = map.instance == 530 and COSMIC or AZEROTH
+			else
+				map.parent = parent and parent > 0 and byLegacy[parent] or 0
+			end
+		end
 	end
 
-	local function currentMapInfo()
-		local mapID = GetCurrentMapAreaID()
-		local continent = GetCurrentMapContinent()
-		local zone = GetCurrentMapZone()
-		local name, mapType, parent
-		if continent and continent > 0 and zone and zone > 0 then
-			name = select(zone, GetMapZones(continent))
-			mapType = Enum.UIMapType.Zone
-		elseif continent and continent > 0 then
-			name = select(continent, GetMapContinents())
-			mapType = Enum.UIMapType.Continent
-		elseif continent == 0 then
-			name = WORLD_MAP or "World"
-			mapType = Enum.UIMapType.World
-		else
-			name = GetRealZoneText()
-			mapType = GetNumDungeonMapLevels() > 0 and Enum.UIMapType.Dungeon or Enum.UIMapType.Zone
-		end
-		return mapID, name, mapType, continent
+	local function mapInfo(uiMapID, map)
+		return { mapID = uiMapID, name = map.name or "", mapType = map.mapType, parentMapID = map.parent or 0, flags = 0 }
+	end
+
+	local function hasBounds(map)
+		return map.left and (map.left ~= 0 or map.right ~= 0) and map.left ~= map.right and map.top ~= map.bottom
+	end
+
+	-- Translation for code that mixes the two numberings.
+	_G.ModernUI_GetUIMapIDFromAreaID = function(legacy)
+		load()
+		return byLegacy[legacy]
+	end
+	_G.ModernUI_GetAreaIDFromUIMapID = function(uiMapID)
+		load()
+		local map = maps[uiMapID]
+		return map and map.legacy
 	end
 
 	set("GetBestMapForUnit", function(unit)
-		if unit ~= "player" and not UnitIsUnit(unit or "", "player") then
+		if not unit or not (UnitIsUnit(unit, "player") or UnitInParty(unit) or UnitInRaid(unit)) then
 			return nil
 		end
-		return (onMap(nil, function() return GetCurrentMapAreaID() end))
-	end)
-	set("GetMapInfo", function(mapID)
-		if not mapID then
+		load()
+		local legacy = ModernUI_GetPlayerMapAreaID()
+		if not legacy then
 			return nil
 		end
-		return onMap(mapID, function()
-			local id, name, mapType, continent = currentMapInfo()
-			local parentMapID = 0
-			if mapType == Enum.UIMapType.Zone and continent and continent > 0 then
-				SetMapZoom(continent)
-				parentMapID = GetCurrentMapAreaID()
-			end
-			return { mapID = id, name = name or "", mapType = mapType, parentMapID = parentMapID, flags = 0 }
-		end)
-	end)
-	set("GetPlayerMapPosition", function(mapID, unit)
-		return onMap(mapID, function()
-			local x, y = GetPlayerMapPosition(unit or "player")
-			if not x or (x == 0 and y == 0) then
+		if not UnitIsUnit(unit, "player") then
+			-- A group member: their own zone when the client knows it, else the player's.
+			local x = ModernUI_GetUnitMapPosition(unit, legacy)
+			if not x then
 				return nil
 			end
-			return CreateVector2D(x, y)
-		end)
+		end
+		return byLegacy[legacy]
 	end)
-	set("GetMapChildrenInfo", function(mapID)
-		return onMap(mapID, function()
-			local list = {}
-			local _, _, mapType, continent = currentMapInfo()
-			if mapType == Enum.UIMapType.Continent and continent and continent > 0 then
-				local zones = { GetMapZones(continent) }
-				for i, name in ipairs(zones) do
-					SetMapZoom(continent, i)
-					list[#list + 1] = { mapID = GetCurrentMapAreaID(), name = name, mapType = Enum.UIMapType.Zone, parentMapID = mapID, flags = 0 }
+	set("GetMapInfo", function(uiMapID)
+		load()
+		local map = uiMapID and maps[uiMapID]
+		return map and mapInfo(uiMapID, map) or nil
+	end)
+	set("GetMapChildrenInfo", function(uiMapID, mapType, allDescendants)
+		load()
+		local list = {}
+		local function collect(parent)
+			for id, map in pairs(maps) do
+				if map.parent == parent and id ~= parent then
+					if not mapType or map.mapType == mapType then
+						list[#list + 1] = mapInfo(id, map)
+					end
+					if allDescendants then
+						collect(id)
+					end
 				end
 			end
-			return list
-		end)
+		end
+		if uiMapID then
+			collect(uiMapID)
+		end
+		table.sort(list, function(a, b) return a.mapID < b.mapID end)
+		return list
+	end)
+	set("GetMapParentInfo", function(uiMapID, mapType, topMost)
+		load()
+		local found
+		local map = maps[uiMapID]
+		while map and map.parent and map.parent ~= 0 do
+			local parent = maps[map.parent]
+			if not parent then
+				break
+			end
+			if parent.mapType == mapType then
+				found = mapInfo(map.parent, parent)
+				if not topMost then
+					break
+				end
+			end
+			map = parent
+		end
+		return found
+	end)
+	set("GetPlayerMapPosition", function(uiMapID, unit)
+		load()
+		local map = uiMapID and maps[uiMapID]
+		if not map or not map.legacy then
+			return nil
+		end
+		local x, y = ModernUI_GetUnitMapPosition(unit or "player", map.legacy)
+		return x and CreateVector2D(x, y) or nil
+	end)
+	set("GetWorldPosFromMapPos", function(uiMapID, mapPosition)
+		load()
+		local map = uiMapID and maps[uiMapID]
+		if not map or not hasBounds(map) or not mapPosition then
+			return nil
+		end
+		local x, y = mapPosition.x or 0, mapPosition.y or 0
+		local worldX = map.top - y * (map.top - map.bottom)
+		local worldY = map.left - x * (map.left - map.right)
+		return map.instance, CreateVector2D(worldX, worldY)
+	end)
+	set("GetMapPosFromWorldPos", function(instance, worldPosition, uiMapID)
+		load()
+		if not worldPosition then
+			return nil
+		end
+		local function try(id, map)
+			if map and hasBounds(map) and map.instance == instance then
+				local x = (map.left - worldPosition.y) / (map.left - map.right)
+				local y = (map.top - worldPosition.x) / (map.top - map.bottom)
+				if uiMapID or (x >= 0 and x <= 1 and y >= 0 and y <= 1) then
+					return id, CreateVector2D(x, y)
+				end
+			end
+		end
+		if uiMapID then
+			return try(uiMapID, maps[uiMapID])
+		end
+		for _, kind in ipairs({ Enum.UIMapType.Zone, Enum.UIMapType.Continent }) do
+			for id, map in pairs(maps) do
+				if map.mapType == kind then
+					local found, position = try(id, map)
+					if found then
+						return found, position
+					end
+				end
+			end
+		end
+		return nil
+	end)
+	set("GetMapWorldSize", function(uiMapID)
+		load()
+		local map = uiMapID and maps[uiMapID]
+		if not map or not hasBounds(map) then
+			return 0, 0
+		end
+		return map.left - map.right, map.top - map.bottom
+	end)
+	set("GetMapRectOnMap", function(uiMapID, topUiMapID)
+		load()
+		local map, top = maps[uiMapID], maps[topUiMapID]
+		if not map or not top or not hasBounds(map) or not hasBounds(top) or map.instance ~= top.instance then
+			return 0, 0, 0, 0
+		end
+		local width, height = top.left - top.right, top.top - top.bottom
+		local minX = (top.left - map.left) / width
+		local maxX = (top.left - map.right) / width
+		local minY = (top.top - map.top) / height
+		local maxY = (top.top - map.bottom) / height
+		return minX, maxX, minY, maxY
+	end)
+	set("GetAreaInfo", function(areaID)
+		return areaID and ModernUI_GetAreaName(areaID) or nil
 	end)
 	set("GetMapGroupID", nilFn)
 	set("GetMapGroupMembersInfo", nilFn)
-	set("GetWorldPosFromMapPos", nilFn)
-	set("GetMapPosFromWorldPos", nilFn)
-	set("GetAreaInfo", nilFn)
-	set("GetMapWorldSize", nilFn)
 	set("GetMapArtID", nilFn)
 	set("GetMapLevels", function() return 0, 0, 0, 0 end)
-	set("GetMapRectOnMap", nilFn)
-	set("GetFallbackWorldMapID", function() return 0 end)
-	set("MapHasArt", function() return true end)
+	set("GetFallbackWorldMapID", function() return AZEROTH end)
+	set("MapHasArt", function(uiMapID) load() return maps[uiMapID] ~= nil end)
 	set("IsMapValidForNavBarDropDown", function() return true end)
 	set("GetMapDisplayInfo", function() return false end)
 	set("GetMapHighlightInfoAtPosition", nilFn)
 	set("GetMapLinksForMap", emptyFn)
-	set("GetMapInfoAtPosition", nilFn)
+	set("GetMapInfoAtPosition", function(uiMapID, x, y)
+		load()
+		local instance, world = C_Map.GetWorldPosFromMapPos(uiMapID, CreateVector2D(x, y))
+		if not world then
+			return nil
+		end
+		local found = C_Map.GetMapPosFromWorldPos(instance, world)
+		return found and C_Map.GetMapInfo(found) or nil
+	end)
 	set("GetMapBannersForMap", emptyFn)
 
 	local waypoint

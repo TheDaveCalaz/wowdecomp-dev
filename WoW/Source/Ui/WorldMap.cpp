@@ -63,6 +63,8 @@ int32_t CGWorldMap::m_currentDungeonMap = -1;
 // STATIC: 0x00ACCF10
 int32_t CGWorldMap::m_currentOrphanZone = -1;
 
+bool CGWorldMap::s_resolveOnly = false;
+
 // STATIC: 0x00BE8F08
 TSFixedArray<WorldMapContinentInfo> CGWorldMap::m_continents;
 
@@ -607,6 +609,10 @@ void CGWorldMap::SetMap(uint32_t continent, uint32_t zone, int32_t dungeonMap) {
         CGWorldMap::m_currentZone = -1;
         CGWorldMap::m_currentOrphanZone = continent == static_cast<uint32_t>(-2) ? zone : -1;
         CGWorldMap::m_currentDungeonMap = dungeonMap;
+    }
+
+    if (CGWorldMap::s_resolveOnly) {
+        return;
     }
 
     CGPlayer_C* player = static_cast<CGPlayer_C*>(ClntObjMgrObjectPtr(ClntObjMgrGetActivePlayer(), TYPEMASK_PLAYER, __FILE__, __LINE__));

@@ -259,10 +259,31 @@ add(frameTypes, "Lower", function(self) self:SetFrameLevel(math.max(0, self:GetF
 addTo("Texture", "SetColorTexture", function(self, r, g, b, a)
 	self:SetTexture(r, g, b, a or 1)
 end)
--- This client has no atlas data, so an atlas leaves the texture empty instead of raising an error.
+-- This client has no atlas data. Atlases with a counterpart among this client's own textures are drawn
+-- with it (ModernUI_AtlasFallback: file, width, height, left, right, top, bottom); others leave the
+-- texture empty instead of raising an error.
+local atlasFallback = {
+	Options_Tab_Left = { "Interface\\ChatFrame\\ChatFrameTab-BGLeft", 16, 32 },
+	Options_Tab_Middle = { "Interface\\ChatFrame\\ChatFrameTab-BGMid", 44, 32 },
+	Options_Tab_Right = { "Interface\\ChatFrame\\ChatFrameTab-BGRight", 16, 32 },
+	Options_Tab_Active_Left = { "Interface\\ChatFrame\\ChatFrameTab-SelectedLeft", 16, 32 },
+	Options_Tab_Active_Middle = { "Interface\\ChatFrame\\ChatFrameTab-SelectedMid", 44, 32 },
+	Options_Tab_Active_Right = { "Interface\\ChatFrame\\ChatFrameTab-SelectedRight", 16, 32 },
+}
+_G.ModernUI_AtlasFallback = _G.ModernUI_AtlasFallback or atlasFallback
 addTo("Texture", "SetAtlas", function(self, atlas, useAtlasSize)
 	stateOf(self).atlas = atlas
-	return false
+	local entry = atlas and _G.ModernUI_AtlasFallback[atlas]
+	if not entry then
+		return false
+	end
+	self:SetTexture(entry[1])
+	self:SetTexCoord(entry[4] or 0, entry[5] or 1, entry[6] or 0, entry[7] or 1)
+	if useAtlasSize and entry[2] then
+		self:SetWidth(entry[2])
+		self:SetHeight(entry[3])
+	end
+	return true
 end)
 addTo("Texture", "GetAtlas", function(self) return stateOf(self).atlas end)
 addTo("Texture", "SetMask", noop)

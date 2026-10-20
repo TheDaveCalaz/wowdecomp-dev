@@ -1159,6 +1159,306 @@ static int32_t Script_GetDebugZoneMap(lua_State* L) {
     return 0;
 }
 
+// Not in the original client: side-effect-free map lookups for the modern C_Map. Map IDs are this client's
+// own (the ones GetCurrentMapAreaID returns: the WorldMapArea record ID plus one). The open world map is
+// never changed: the current-map state is saved, the map is resolved with SetMap in resolve-only mode, and
+// the state is put back before returning.
+
+struct ModernUI_MapState {
+    int32_t continent;
+    int32_t zone;
+    int32_t dungeonMap;
+    int32_t orphanZone;
+};
+
+static ModernUI_MapState ModernUI_SaveMapState() {
+    CGWorldMap::s_resolveOnly = true;
+    return { CGWorldMap::m_currentContinent, CGWorldMap::m_currentZone, CGWorldMap::m_currentDungeonMap, CGWorldMap::m_currentOrphanZone };
+}
+
+static void ModernUI_RestoreMapState(const ModernUI_MapState& state) {
+    CGWorldMap::m_currentContinent = state.continent;
+    CGWorldMap::m_currentZone = state.zone;
+    CGWorldMap::m_currentDungeonMap = state.dungeonMap;
+    CGWorldMap::m_currentOrphanZone = state.orphanZone;
+    CGWorldMap::s_resolveOnly = false;
+}
+
+// The record ID the current map state shows (GetCurrentMapAreaID without the plus one).
+static int32_t ModernUI_CurrentMapRecordID() {
+    if (CGWorldMap::m_currentContinent >= 0) {
+        WorldMapContinentInfo& entry = CGWorldMap::m_continents.m_data[CGWorldMap::m_currentContinent];
+        return CGWorldMap::m_currentZone >= 0 ? entry.m_zones.m_data[CGWorldMap::m_currentZone] : entry.m_areaID;
+    }
+
+    return CGWorldMap::m_currentOrphanZone;
+}
+
+static int32_t ModernUI_CurrentDungeonLevel() {
+    int32_t dungeonMap = CGWorldMap::m_currentOrphanZone == -1 ? -1 : CGWorldMap::m_currentDungeonMap;
+    DungeonMapRec* rec = g_dungeonMapDB.GetRecord(dungeonMap);
+    int32_t level = rec ? rec->m_floorIndex : 0;
+    WorldMapAreaRec* area = g_worldMapAreaDB.GetRecord(CGWorldMap::m_currentOrphanZone);
+
+    if (area && area->m_defaultDungeonFloor == -1) {
+        level++;
+    }
+
+    return level;
+}
+
+// SetMapByID's choice of map for a record, made in resolve-only mode by the caller.
+static bool ModernUI_SelectMapRecord(int32_t recordID) {
+    WorldMapAreaRec* area = g_worldMapAreaDB.GetRecord(recordID);
+
+    if (!area) {
+        return false;
+    }
+
+    int32_t displayMapID = area->m_displayMapID < 0 ? area->m_mapID : area->m_displayMapID;
+
+    for (uint32_t continent = 0; continent < CGWorldMap::m_continents.Count(); continent++) {
+        WorldMapContinentInfo& entry = CGWorldMap::m_continents.m_data[continent];
+
+        if (entry.m_mapID != displayMapID) {
+            continue;
+        }
+
+        if (area->m_defaultDungeonFloor > 0) {
+            CGWorldMap::SetMap(-2, area->m_id, area->m_defaultDungeonFloor);
+            return true;
+        }
+
+        if (!area->m_areaID) {
+            CGWorldMap::SetMap(continent, -1, -1);
+            return true;
+        }
+
+        for (uint32_t zone = 0; zone < entry.m_zones.Count(); zone++) {
+            if (entry.m_zones.m_data[zone] == area->m_id) {
+                CGWorldMap::SetMap(continent, zone, -1);
+                return true;
+            }
+        }
+    }
+
+    if (area->m_defaultDungeonFloor == -1) {
+        CGWorldMap::SetMap(-2, recordID, -1);
+        return true;
+    }
+
+    for (int32_t i = 0; i < g_dungeonMapDB.m_numRecords; i++) {
+        DungeonMapRec* dungeonMap = g_dungeonMapDB.GetRecordByIndex(i);
+
+        if (dungeonMap && dungeonMap->m_mapID == area->m_mapID && dungeonMap->m_floorIndex == 1) {
+            CGWorldMap::SetMap(-2, recordID, dungeonMap->m_id);
+            return true;
+        }
+    }
+
+    CGWorldMap::SetMap(-2, recordID, -1);
+    return true;
+}
+
+// The continent index a record belongs to, or -1.
+static int32_t ModernUI_ContinentOf(const WorldMapAreaRec* area) {
+    int32_t displayMapID = area->m_displayMapID < 0 ? area->m_mapID : area->m_displayMapID;
+
+    for (uint32_t continent = 0; continent < CGWorldMap::m_continents.Count(); continent++) {
+        WorldMapContinentInfo& entry = CGWorldMap::m_continents.m_data[continent];
+
+        if (entry.m_areaID == area->m_id) {
+            return continent;
+        }
+
+        if (entry.m_mapID != displayMapID) {
+            continue;
+        }
+
+        for (uint32_t zone = 0; zone < entry.m_zones.Count(); zone++) {
+            if (entry.m_zones.m_data[zone] == area->m_id) {
+                return continent;
+            }
+        }
+    }
+
+    return -1;
+}
+
+// ModernUI_GetPlayerMapAreaID() -> mapID, dungeonLevel: the map the player is on, as the world map would
+// show it on opening.
+static int32_t Script_ModernUI_GetPlayerMapAreaID(lua_State* L) {
+    ModernUI_MapState state = ModernUI_SaveMapState();
+    CGWorldMap::SetMapToCurrentZone(0);
+    int32_t recordID = ModernUI_CurrentMapRecordID();
+    int32_t level = ModernUI_CurrentDungeonLevel();
+    ModernUI_RestoreMapState(state);
+
+    if (recordID < 0) {
+        return 0;
+    }
+
+    lua_pushnumber(L, recordID + 1);
+    lua_pushnumber(L, level);
+    return 2;
+}
+
+// ModernUI_GetMapAreaInfo(mapID) -> name, kind ("continent", "zone" or "dungeon"), parentMapID, instanceID,
+// left, right, top, bottom (world bounds; all zero for maps without them), areaID (AreaTable).
+static int32_t Script_ModernUI_GetMapAreaInfo(lua_State* L) {
+    if (!lua_isnumber(L, 1)) {
+        return 0;
+    }
+
+    int32_t recordID = static_cast<int32_t>(lua_tonumber(L, 1)) - 1;
+    WorldMapAreaRec* area = g_worldMapAreaDB.GetRecord(recordID);
+
+    if (!area) {
+        return 0;
+    }
+
+    int32_t continent = ModernUI_ContinentOf(area);
+    const char* name = nullptr;
+    const char* kind = "dungeon";
+    int32_t parent = 0;
+
+    if (continent >= 0 && CGWorldMap::m_continents.m_data[continent].m_areaID == area->m_id) {
+        MapRec* map = g_mapDB.GetRecord(area->m_mapID);
+        name = map ? map->m_mapName : nullptr;
+        kind = "continent";
+    } else {
+        AreaTableRec* areaRec = area->m_areaID ? g_areaTableDB.GetRecord(area->m_areaID) : nullptr;
+        name = areaRec ? areaRec->m_areaName : nullptr;
+
+        if (!name) {
+            MapRec* map = g_mapDB.GetRecord(area->m_mapID);
+            name = map ? map->m_mapName : nullptr;
+        }
+
+        if (continent >= 0 && area->m_defaultDungeonFloor == 0) {
+            kind = "zone";
+            parent = area->m_parentWorldMapID > 0 ? area->m_parentWorldMapID + 1 : CGWorldMap::m_continents.m_data[continent].m_areaID + 1;
+        } else if (continent >= 0) {
+            parent = CGWorldMap::m_continents.m_data[continent].m_areaID + 1;
+        }
+    }
+
+    lua_pushstring(L, name ? name : area->m_areaName);
+    lua_pushstring(L, kind);
+    lua_pushnumber(L, parent);
+    lua_pushnumber(L, area->m_mapID);
+    lua_pushnumber(L, area->m_locLeft);
+    lua_pushnumber(L, area->m_locRight);
+    lua_pushnumber(L, area->m_locTop);
+    lua_pushnumber(L, area->m_locBottom);
+    lua_pushnumber(L, area->m_areaID);
+    return 9;
+}
+
+// ModernUI_GetAllMapAreaIDs() -> mapID, ...: every map this client has.
+static int32_t Script_ModernUI_GetAllMapAreaIDs(lua_State* L) {
+    int32_t count = 0;
+
+    for (int32_t i = 0; i < g_worldMapAreaDB.m_numRecords; i++) {
+        lua_checkstack(L, 1);
+        lua_pushnumber(L, g_worldMapAreaDB.m_records[i].m_id + 1);
+        count++;
+    }
+
+    return count;
+}
+
+// ModernUI_GetAreaName(areaID) -> the area's name from AreaTable, or nothing.
+static int32_t Script_ModernUI_GetAreaName(lua_State* L) {
+    if (!lua_isnumber(L, 1)) {
+        return 0;
+    }
+
+    AreaTableRec* area = g_areaTableDB.GetRecord(static_cast<int32_t>(lua_tonumber(L, 1)));
+
+    if (!area || !area->m_areaName) {
+        return 0;
+    }
+
+    lua_pushstring(L, area->m_areaName);
+    return 1;
+}
+
+// ModernUI_GetMapChildren(mapID) -> mapID, ...: the zones directly under a continent or zone.
+static int32_t Script_ModernUI_GetMapChildren(lua_State* L) {
+    if (!lua_isnumber(L, 1)) {
+        return 0;
+    }
+
+    int32_t recordID = static_cast<int32_t>(lua_tonumber(L, 1)) - 1;
+    WorldMapAreaRec* area = g_worldMapAreaDB.GetRecord(recordID);
+
+    if (!area) {
+        return 0;
+    }
+
+    int32_t continent = ModernUI_ContinentOf(area);
+
+    if (continent < 0) {
+        return 0;
+    }
+
+    WorldMapContinentInfo& entry = CGWorldMap::m_continents.m_data[continent];
+    bool isContinent = entry.m_areaID == area->m_id;
+    int32_t count = 0;
+
+    for (uint32_t zone = 0; zone < entry.m_zones.Count(); zone++) {
+        WorldMapAreaRec* child = g_worldMapAreaDB.GetRecord(entry.m_zones.m_data[zone]);
+
+        if (!child || child->m_id == area->m_id) {
+            continue;
+        }
+
+        if (isContinent ? child->m_parentWorldMapID > 0 : child->m_parentWorldMapID != area->m_id) {
+            continue;
+        }
+
+        lua_checkstack(L, 1);
+        lua_pushnumber(L, child->m_id + 1);
+        count++;
+    }
+
+    return count;
+}
+
+// ModernUI_GetUnitMapPosition(unit, mapID) -> x, y on that map (0 to 1), or nothing when the unit is not on
+// it. Works as GetPlayerMapPosition does, for the player and party or raid members.
+static int32_t Script_ModernUI_GetUnitMapPosition(lua_State* L) {
+    if (!lua_isstring(L, 1) || !lua_isnumber(L, 2)) {
+        return 0;
+    }
+
+    WOWGUID guid = GetGuidByKeyword(lua_tolstring(L, 1, nullptr));
+
+    if (!(guid == ClntObjMgrGetActivePlayer() || CGPartyInfo::IsMember(guid) || IsGuidInMyRaid(guid))) {
+        return 0;
+    }
+
+    int32_t recordID = static_cast<int32_t>(lua_tonumber(L, 2)) - 1;
+    float x = 0.0f;
+    float y = 0.0f;
+    ModernUI_MapState state = ModernUI_SaveMapState();
+
+    if (ModernUI_SelectMapRecord(recordID)) {
+        CGWorldMap::GetPlayerPosition(guid, &x, &y);
+    }
+
+    ModernUI_RestoreMapState(state);
+
+    if (x == 0.0f && y == 0.0f) {
+        return 0;
+    }
+
+    lua_pushnumber(L, x);
+    lua_pushnumber(L, y);
+    return 2;
+}
+
 // STATIC: 0x00ACCF18
 static FrameScript_Method s_ScriptFunctions[] = {
     { "GetMapContinents", &Script_GetMapContinents },
@@ -1210,6 +1510,13 @@ void WorldMapRegisterScriptFunctions() {
     for (uint32_t i = 0; i < sizeof(s_ScriptFunctions) / sizeof(s_ScriptFunctions[0]); i++) {
         FrameScript_RegisterFunction(s_ScriptFunctions[i].m_name, s_ScriptFunctions[i].m_method);
     }
+
+    FrameScript_RegisterFunction("ModernUI_GetPlayerMapAreaID", &Script_ModernUI_GetPlayerMapAreaID);
+    FrameScript_RegisterFunction("ModernUI_GetMapAreaInfo", &Script_ModernUI_GetMapAreaInfo);
+    FrameScript_RegisterFunction("ModernUI_GetMapChildren", &Script_ModernUI_GetMapChildren);
+    FrameScript_RegisterFunction("ModernUI_GetUnitMapPosition", &Script_ModernUI_GetUnitMapPosition);
+    FrameScript_RegisterFunction("ModernUI_GetAllMapAreaIDs", &Script_ModernUI_GetAllMapAreaIDs);
+    FrameScript_RegisterFunction("ModernUI_GetAreaName", &Script_ModernUI_GetAreaName);
 }
 
 // VERIFY: 554803ad auto
@@ -1218,4 +1525,11 @@ void WorldMapUnregisterScriptFunctions() {
     for (uint32_t i = 0; i < sizeof(s_ScriptFunctions) / sizeof(s_ScriptFunctions[0]); i++) {
         FrameScript_UnregisterFunction(s_ScriptFunctions[i].m_name);
     }
+
+    FrameScript_UnregisterFunction("ModernUI_GetPlayerMapAreaID");
+    FrameScript_UnregisterFunction("ModernUI_GetMapAreaInfo");
+    FrameScript_UnregisterFunction("ModernUI_GetMapChildren");
+    FrameScript_UnregisterFunction("ModernUI_GetUnitMapPosition");
+    FrameScript_UnregisterFunction("ModernUI_GetAllMapAreaIDs");
+    FrameScript_UnregisterFunction("ModernUI_GetAreaName");
 }

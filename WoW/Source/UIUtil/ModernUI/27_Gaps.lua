@@ -932,3 +932,20 @@ for i = 1, NUM_GROUP_LOOT_FRAMES or 4 do
 		frame.IconFrame = _G["GroupLootFrame" .. i .. "IconFrame"]
 	end
 end
+
+-- HasOverrideActionBar is a plain global on modern clients as well as C_ActionBar's; this client has no
+-- override bar (vehicles use their own bar).
+define("HasOverrideActionBar", function() return false end)
+define("HasVehicleActionBar", function() return UnitHasVehicleUI and UnitHasVehicleUI("player") or false end)
+
+-- Modern code shows the shared popups through paths that skip StaticPopup_Show's set-up, leaving no
+-- timeout; the 3.3.5 OnUpdate would then compare nil.
+if type(StaticPopup_OnUpdate) == "function" then
+	local onUpdate = StaticPopup_OnUpdate
+	StaticPopup_OnUpdate = function(dialog, elapsed)
+		if dialog and dialog.timeleft == nil then
+			dialog.timeleft = 0
+		end
+		return onUpdate(dialog, elapsed)
+	end
+end

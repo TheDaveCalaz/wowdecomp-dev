@@ -185,7 +185,23 @@ local fallbacks = {
 	LINK_FONT_COLOR = { 0.4, 0.733, 1 },
 	ARTIFACT_GOLD_COLOR = { 0.9, 0.8, 0.5 },
 	PASSIVE_SPELL_FONT_COLOR = { 0.776, 0.737, 0.635 },
+	BATTLENET_FONT_COLOR = { 0.51, 0.773, 1 },
+	DIM_GREEN_FONT_COLOR = { 0.251, 0.753, 0.251 },
+	PURE_GREEN_COLOR = { 0, 1, 0 },
+	PURE_RED_COLOR = { 1, 0, 0 },
+	VERY_LIGHT_GRAY_COLOR = { 0.9, 0.9, 0.9 },
+	CORRUPTION_COLOR = { 0.584, 0.428, 0.82 },
+	QUEST_REWARD_CONTEXT_FONT_COLOR = { 0.4, 0.733, 1 },
+	INVALID_EQUIPMENT_COLOR = { 1, 0.125, 0.125 },
+	CONTEXT_FEEDBACK_COLOR = { 0.6, 0.6, 0.6 },
 }
+-- Debuff type colours (this client's DebuffTypeColor values).
+fallbacks.DEBUFF_TYPE_MAGIC_COLOR = { 0.2, 0.6, 1 }
+fallbacks.DEBUFF_TYPE_CURSE_COLOR = { 0.6, 0, 1 }
+fallbacks.DEBUFF_TYPE_DISEASE_COLOR = { 0.6, 0.4, 0 }
+fallbacks.DEBUFF_TYPE_POISON_COLOR = { 0, 0.6, 0 }
+fallbacks.DEBUFF_TYPE_NONE_COLOR = { 0.8, 0, 0 }
+fallbacks.DEBUFF_TYPE_BLEED_COLOR = { 1, 0.2, 0.2 }
 for name, rgb in pairs(fallbacks) do
 	if _G[name] == nil then
 		_G[name] = CreateColor(rgb[1], rgb[2], rgb[3], 1)

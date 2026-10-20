@@ -262,19 +262,3 @@ do
 		end
 	end
 end
-
-_G.CreateRadioButtonGroup = _G.CreateRadioButtonGroup or function()
-	local group = { buttons = {} }
-	function group:AddButton(button) self.buttons[#self.buttons + 1] = button end
-	function group:AddButtons(buttons) for _, b in ipairs(buttons) do self:AddButton(b) end end
-	function group:SelectAtIndex(index)
-		for i, b in ipairs(self.buttons) do
-			if b.SetChecked then b:SetChecked(i == index) end
-		end
-		self.selected = index
-		if self.callback then self.callback(self.buttons[index], index) end
-	end
-	function group:GetSelectedIndex() return self.selected end
-	function group:RegisterCallback(_, callback) self.callback = callback end
-	return group
-end

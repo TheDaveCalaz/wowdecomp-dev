@@ -67,6 +67,9 @@ class CGWorldMap {
     static int32_t m_currentZone;
     static int32_t m_currentDungeonMap;
     static int32_t m_currentOrphanZone;
+    // Not in the original client: while set, SetMap only records which map it would show (no landmarks,
+    // overlays or WORLD_MAP_UPDATE), so the modern C_Map can resolve maps without touching the open map.
+    static bool s_resolveOnly;
     static TSFixedArray<WorldMapContinentInfo> m_continents;
     static TSGrowableArray<WorldMapLandmarkInfo> m_landmarks;
     static TSGrowableArray<int32_t> m_overlays;
