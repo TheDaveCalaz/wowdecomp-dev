@@ -751,9 +751,13 @@ void CSimpleFrame::LoadXMLInheritance(XMLNode* node, CStatus* status) {
         } while (name[0]);
     }
 
-    XMLNode* frames = node->GetChildByName("Frames");
+    // ModernUI: modern XML may split a frame's children over several <Frames> elements; the original only
+    // created those of the first.
+    for (XMLNode* frames = node->m_child; frames; frames = frames->m_next) {
+        if (SStrCmpI(frames->m_name.m_str, "Frames", STORM_MAX_STR)) {
+            continue;
+        }
 
-    if (frames) {
         for (XMLNode* child = frames->m_child; child; child = child->m_next) {
             FrameXML_CreateFrame(child, this, status);
         }

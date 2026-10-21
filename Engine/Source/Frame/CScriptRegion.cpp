@@ -77,18 +77,19 @@ void CScriptRegion::SetParent(CSimpleFrame* parent) {
 // VERIFY: 2e5f1acc manual
 // OFFSET: 0x004883F0
 void CScriptRegion::LoadXML_Animations(XMLNode* node, CStatus* status) {
-    XMLNode* animations = node->GetChildByName("Animations");
+    // ModernUI: every <Animations> element, not only the first.
+    for (XMLNode* animations = node->m_child; animations; animations = animations->m_next) {
+        if (SStrCmpI(animations->m_name.m_str, "Animations", STORM_MAX_STR)) {
+            continue;
+        }
 
-    if (!animations) {
-        return;
-    }
-
-    for (XMLNode* child = animations->m_child; child; child = child->m_next) {
-        if (SStrCmpI(child->m_name.m_str, "AnimationGroup", STORM_MAX_STR)) {
-            const char* name = this->GetName();
-            status->Add(STATUS_WARNING, "%s %s: Unknown child node in %s element: %s", this->GetObjectTypeName(), name ? name : "<unnamed>", animations->m_name.m_str, child->m_name.m_str);
-        } else {
-            LoadXML_AnimGroup(child, this, status);
+        for (XMLNode* child = animations->m_child; child; child = child->m_next) {
+            if (SStrCmpI(child->m_name.m_str, "AnimationGroup", STORM_MAX_STR)) {
+                const char* name = this->GetName();
+                status->Add(STATUS_WARNING, "%s %s: Unknown child node in %s element: %s", this->GetObjectTypeName(), name ? name : "<unnamed>", animations->m_name.m_str, child->m_name.m_str);
+            } else {
+                LoadXML_AnimGroup(child, this, status);
+            }
         }
     }
 }

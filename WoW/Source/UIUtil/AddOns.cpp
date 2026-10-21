@@ -126,6 +126,74 @@ static bool ListsModernVersion(const char* p) {
     return false;
 }
 
+// "## AllowLoadGameType: standard" limits an AddOn to some game types; modern clients do not list such an AddOn
+// at all on the others (DBM's retail-only modules, for one, ship with "standard"). This client is "wrath", and
+// counts as "classic" too.
+static bool AllowedOnThisGameType(const char* toc) {
+    const char* key = "AllowLoadGameType:";
+    const char* line = toc;
+
+    while (line && *line) {
+        const char* p = line;
+
+        while (*p == ' ' || *p == '\t') {
+            p++;
+        }
+
+        if (p[0] == '#' && p[1] == '#') {
+            p += 2;
+
+            while (*p == ' ') {
+                p++;
+            }
+
+            if (!SStrCmpI(p, key, SStrLen(key))) {
+                p += SStrLen(key);
+                bool listed = false;
+
+                while (*p && *p != '\r' && *p != '\n') {
+                    while (*p == ' ' || *p == ',' || *p == '\t') {
+                        p++;
+                    }
+
+                    char word[32];
+                    uint32_t n = 0;
+
+                    while (*p && *p != ',' && *p != ' ' && *p != '\t' && *p != '\r' && *p != '\n') {
+                        if (n < sizeof(word) - 1) {
+                            word[n++] = *p;
+                        }
+
+                        p++;
+                    }
+
+                    word[n] = '\0';
+
+                    if (n) {
+                        listed = true;
+
+                        if (!SStrCmpI(word, "wrath", STORM_MAX_STR) || !SStrCmpI(word, "classic", STORM_MAX_STR)) {
+                            return true;
+                        }
+                    }
+                }
+
+                return !listed;
+            }
+        }
+
+        while (*line && *line != '\n') {
+            line++;
+        }
+
+        if (*line) {
+            line++;
+        }
+    }
+
+    return true;
+}
+
 static bool IsOurFlavour(const char* flavour) {
     return !SStrCmpI(flavour, "Wrath", STORM_MAX_STR) || !SStrCmpI(flavour, "WOTLKC", STORM_MAX_STR)
         || !SStrCmpI(flavour, "Classic", STORM_MAX_STR);
@@ -1244,6 +1312,11 @@ static void LoadAddOnInfo(const char* name) {
 
     if (static_cast<uint8_t>(toc[0]) == 0xEF && static_cast<uint8_t>(toc[1]) == 0xBB && static_cast<uint8_t>(toc[2]) == 0xBF) {
         toc += 3;
+    }
+
+    if (!AllowedOnThisGameType(toc)) {
+        SFile::Unload(data);
+        return;
     }
 
     UIADDON* addon = s_addons.New(name, 0, 0);

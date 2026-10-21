@@ -120,3 +120,29 @@ modern.GetPetActionInfo = function(index)
 	end
 	return name, texture, isToken, isActive, autoCastAllowed, autoCastEnabled, not isToken and spellIDByName(name) or nil, false, false
 end
+
+-- GUIDs in the modern form ("Creature-0-1-0-F130-19811-0000A1C2"); see 37_GUID.lua.
+local toModern = _G.ModernUI_ModernGUID
+if toModern then
+	local UnitGUID_335 = _G.UnitGUID
+	modern.UnitGUID = function(unit)
+		return toModern(UnitGUID_335(unit))
+	end
+	local CombatLogGetCurrentEventInfo_global = _G.CombatLogGetCurrentEventInfo
+	if CombatLogGetCurrentEventInfo_global then
+		local event = {}
+		local function keep(...)
+			local n = select("#", ...)
+			for i = 1, n do
+				event[i] = (select(i, ...))
+			end
+			event[4] = toModern(event[4])
+			event[8] = toModern(event[8])
+			return n
+		end
+		modern.CombatLogGetCurrentEventInfo = function()
+			local n = keep(CombatLogGetCurrentEventInfo_global())
+			return unpack(event, 1, n)
+		end
+	end
+end
