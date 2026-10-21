@@ -126,7 +126,8 @@ bool ModernUI_ModernArtPath(const char* name, char* out, size_t size) {
         return false;
     }
 
-    std::string path = name;
+    // Exported art keeps the folders below Interface: Interface\ModernArt\buttons\..., Interface\ModernArt\icons\...
+    std::string path = key.compare(0, 10, "interface\\") == 0 ? std::string(name + 10) : std::string(name);
 
     for (char& c : path) {
         if (c == '/') {
