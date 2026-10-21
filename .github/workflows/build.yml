@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build/x64 -G "Visual Studio 17 2022" -A x64
+        run: cmake -S . -B build/x64 -G "Visual Studio 17 2022" -A x64 "-DCMAKE_EXE_LINKER_FLAGS=/MAP"
       - name: Build WowClient (Release)
         run: cmake --build build/x64 --config Release --target WowClient --parallel
       - name: Collect
@@ -22,6 +22,27 @@ jobs:
           Get-ChildItem bin -Recurse -Include *.exe,*.dll,*.pdb | Copy-Item -Destination out
           Copy-Item Data/ModernUI_FileIDs.txt -Destination out
           Get-ChildItem out | Format-Table Name, Length
+      - name: Name crash addresses
+        if: hashFiles('.github/crash-addresses.txt') != ''
+        shell: pwsh
+        run: |
+          # Each line of .github/crash-addresses.txt is a WowClient64.exe offset from a crash log (exe+0x...);
+          # the function holding it is reported as a notice, read from the linker map.
+          $map = Get-ChildItem bin -Recurse -Filter WowClient64.map | Select-Object -First 1
+          if (-not $map) { Write-Output "::warning::no map file"; exit 0 }
+          $symbols = foreach ($line in Get-Content $map.FullName) {
+            if ($line -match '^\s*0001:([0-9a-fA-F]{8})\s+(\S+)\s+[0-9a-fA-F]{16}') {
+              [pscustomobject]@{ Offset = [Convert]::ToInt64($Matches[1], 16) + 0x1000; Name = $Matches[2] }
+            }
+          }
+          $symbols = $symbols | Sort-Object Offset
+          foreach ($entry in Get-Content .github/crash-addresses.txt) {
+            if ($entry -notmatch '0x([0-9a-fA-F]+)') { continue }
+            $rva = [Convert]::ToInt64($Matches[1], 16)
+            $best = $null
+            foreach ($s in $symbols) { if ($s.Offset -le $rva) { $best = $s } else { break } }
+            if ($best) { Write-Output ("::notice::exe+0x{0:X} = {1}+0x{2:X}" -f $rva, $best.Name, ($rva - $best.Offset)) }
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: wowclient-x64-${{ github.sha }}
