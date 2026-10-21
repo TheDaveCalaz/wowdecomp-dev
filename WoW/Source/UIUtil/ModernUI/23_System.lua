@@ -971,10 +971,8 @@ do
 	set("GetFilenameFromFileDataID", function(id) return ModernUI_GetFilenameFromFileID and ModernUI_GetFilenameFromFileID(id) or nil end)
 end
 do
-	-- 3.3.5 nameplates have no unit tokens, so nothing can be returned for a unit.
+	-- Nameplates (36_NamePlates.lua gives them unit tokens and the modern events).
 	local set = namespace("C_NamePlate")
-	set("GetNamePlateForUnit", nilFn)
-	set("GetNamePlates", emptyFn)
 	for _, name in ipairs({
 		"SetNamePlateFriendlySize", "SetNamePlateEnemySize", "SetNamePlateSelfSize",
 		"SetNamePlateFriendlyClickThrough", "SetNamePlateEnemyClickThrough", "SetNamePlateSelfClickThrough",

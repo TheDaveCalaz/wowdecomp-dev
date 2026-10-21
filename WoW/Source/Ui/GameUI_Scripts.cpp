@@ -21,6 +21,7 @@
 #include "Engine/Source/FrameScript/FrameScript.h"
 #include "Engine/Source/Frame/ModernUIMarkup.h"
 #include "Engine/Source/Frame/ModernUIFiles.h"
+#include "WoW/Source/Ui/NamePlateFrame.h"
 #include "Engine/Source/FrameScript/FrameScript_Object.h"
 #include "Engine/Source/FrameXML/FrameXML.h"
 #include "Engine/Source/FrameXML/LoadXML.h"
@@ -1620,6 +1621,43 @@ static int32_t Script_ModernUI_GetFilenameFromFileID(lua_State* L) {
 
     lua_pushstring(L, path);
     return 1;
+}
+
+// ModernUI_SignalEvent(event, ...): delivers an event this client knows to every frame registered for it, with
+// any Lua values as its arguments (the modern layer synthesises events such as NAME_PLATE_CREATED this way).
+static int32_t Script_ModernUI_SignalEvent(lua_State* L) {
+    int32_t index = lua_isstring(L, 1) ? FrameScript_FindEventIndex(lua_tolstring(L, 1, nullptr)) : -1;
+
+    if (index < 0) {
+        return 0;
+    }
+
+    int32_t argCount = lua_gettop(L);
+    FrameScript_SignalEvent(static_cast<uint32_t>(index), L, argCount);
+    return 0;
+}
+
+// ModernUI_GetNamePlateFrame(tokenOrIndex) -> the nameplate frame showing that unit, or nothing.
+static int32_t Script_ModernUI_GetNamePlateFrame(lua_State* L) {
+    CGNamePlateFrame* plate = nullptr;
+
+    if (lua_type(L, 1) == LUA_TNUMBER) {
+        plate = CGNamePlateFrame::ModernUI_FromIndex(static_cast<uint32_t>(lua_tonumber(L, 1)));
+    } else if (lua_isstring(L, 1)) {
+        plate = CGNamePlateFrame::ModernUI_FromToken(lua_tolstring(L, 1, nullptr));
+    }
+
+    if (!plate) {
+        return 0;
+    }
+
+    if (!plate->m_luaRegistered) {
+        plate->RegisterScriptObject(nullptr);
+    }
+
+    lua_rawgeti(L, LUA_REGISTRYINDEX, plate->m_luaObjectRef);
+    lua_pushnumber(L, plate->m_modernIndex);
+    return 2;
 }
 
 bool ModernUI_CopyToClipboard(const char* text);
@@ -6565,6 +6603,8 @@ static FrameScript_Method s_ScriptFunctions[] = {
     { "ModernUI_RegisterColorName", &Script_ModernUI_RegisterColorName },
     { "ModernUI_GetAtlasInfo", &Script_ModernUI_GetAtlasInfo },
     { "CopyToClipboard", &Script_CopyToClipboard },
+    { "ModernUI_SignalEvent", &Script_ModernUI_SignalEvent },
+    { "ModernUI_GetNamePlateFrame", &Script_ModernUI_GetNamePlateFrame },
     { "GetFileIDFromPath", &Script_GetFileIDFromPath },
     { "ModernUI_GetFilenameFromFileID", &Script_ModernUI_GetFilenameFromFileID },
     { "ModernUI_DebugPlayerGUID", &Script_ModernUI_DebugPlayerGUID },

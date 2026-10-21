@@ -69,9 +69,10 @@ bool ResolveAddOnToc(const char* name, char* out, uint32_t size) {
     return false;
 }
 
-// "## Interface: 11507, 38002, 110200" lists every client an addon supports. Anything at or above this client's
-// version is treated as current (modern addons target newer clients by definition); otherwise the highest value
-// listed is kept so genuinely old addons are still reported as out of date.
+// "## Interface: 11507, 38002, 110200" lists every client an addon supports. A version in the Wrath range
+// (3.3.0 to 3.x, which takes in Wrath Classic) means the addon is current here; otherwise the highest value listed
+// is kept, so addons only for other games (Classic Era, retail) are reported as out of date, as Wrath Classic
+// itself does.
 static uint32_t ParseInterfaceVersions(const char* p) {
     uint32_t best = 0;
 
@@ -86,7 +87,7 @@ static uint32_t ParseInterfaceVersions(const char* p) {
 
         uint32_t value = SStrToUnsigned(p);
 
-        if (value >= 30300) {
+        if (value >= 30300 && value < 40000) {
             return 30300;
         }
 

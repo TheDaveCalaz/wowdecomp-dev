@@ -70,7 +70,13 @@ end
 -- Spells: name, rank, icon, castTime, minRange, maxRange, spellID, originalIcon.
 local GetSpellInfo_335 = _G.GetSpellInfo
 modern.GetSpellInfo = function(spell, rank)
-	local name, spellRank, icon, _, _, _, castTime, minRange, maxRange = GetSpellInfo_335(spell, rank)
+	-- A second argument (even nil) makes this client read the first as a spellbook slot.
+	local name, spellRank, icon, _, _, _, castTime, minRange, maxRange
+	if rank ~= nil then
+		name, spellRank, icon, _, _, _, castTime, minRange, maxRange = GetSpellInfo_335(spell, rank)
+	else
+		name, spellRank, icon, _, _, _, castTime, minRange, maxRange = GetSpellInfo_335(spell)
+	end
 	if not name then
 		return nil
 	end

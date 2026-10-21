@@ -24,7 +24,7 @@ class CGNamePlateFrame : public TSLinkedNode<CGNamePlateFrame>, public CSimpleFr
     static CGNamePlateFrame* GetNamePlateFocus();
     static CGNamePlateFrame* GetNewNameplateFrame(CSimpleFrame* parent);
 
-    /* 02A4 */ uint32_t unused_02A4;
+    /* 02A4 */ uint32_t m_modernIndex;   // not in the original: N of the "nameplateN" unit token
     /* 02A8 */ WOWGUID m_guid;
     /* 02B0 */ CSimpleTexture* m_namePlateGlow;
     /* 02B4 */ CSimpleTexture* m_targetingFrameSkull;
@@ -61,6 +61,12 @@ class CGNamePlateFrame : public TSLinkedNode<CGNamePlateFrame>, public CSimpleFr
     void UpdateLevelDisplay(CGUnit_C* unit);
     void UpdateNameDisplay(const CGUnit_C* unit);
     void UpdateRaidTargetDisplay(uint32_t raidTarget);
+
+    // Not in the original client: modern nameplate unit tokens ("nameplate1"...) and their events.
+    void ModernUI_UnitAdded();
+    void ModernUI_UnitRemoved();
+    static CGNamePlateFrame* ModernUI_FromToken(const char* token);
+    static CGNamePlateFrame* ModernUI_FromIndex(uint32_t index);
 };
 
 #endif

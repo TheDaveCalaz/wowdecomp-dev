@@ -788,6 +788,7 @@ void CGUnit_C::DestroyNamePlate() {
         CGUnit_C::s_namePlateFocus = nullptr;
     }
 
+    this->m_namePlateFrame->ModernUI_UnitRemoved();
     s_unusedNamePlates.LinkToTail(this->m_namePlateFrame);
     this->m_namePlateFrame->Hide();
     this->m_namePlateFrame = nullptr;
@@ -10452,7 +10453,8 @@ void CGUnit_C::Disable() {
             CGUnit_C::s_namePlateFocus = nullptr;
         }
 
-        s_unusedNamePlates.LinkToTail(this->m_namePlateFrame);
+        this->m_namePlateFrame->ModernUI_UnitRemoved();
+    s_unusedNamePlates.LinkToTail(this->m_namePlateFrame);
         this->m_namePlateFrame->Hide();
         this->m_namePlateFrame = nullptr;
         this->ObjectNameVisibilityChanged();
@@ -20103,6 +20105,7 @@ void CGUnit_C::NamePlateAddOrUpdate(const C3Vector& position, CGWorldFrame* worl
         this->m_namePlateFrame = CGNamePlateFrame::GetNewNameplateFrame(worldFrame);
         this->m_namePlateFrame->Initialize(this);
         this->m_namePlateFrame->Show();
+        this->m_namePlateFrame->ModernUI_UnitAdded();
         this->m_namePlateFrame->m_position = position;
         NamePlateSort(this->m_namePlateFrame);
         worldFrame->SetNamePlateUpdate();
@@ -20247,6 +20250,7 @@ void CGUnit_C::NamePlateClearAll() {
                 CGUnit_C::s_namePlateFocus = nullptr;
             }
 
+            unit->m_namePlateFrame->ModernUI_UnitRemoved();
             s_unusedNamePlates.LinkToTail(unit->m_namePlateFrame);
             unit->m_namePlateFrame->Hide();
             unit->m_namePlateFrame = nullptr;

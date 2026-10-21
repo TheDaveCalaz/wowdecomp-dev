@@ -808,6 +808,23 @@ int32_t FrameScript_LoadVariables(const char* filename, CStatus* status) {
 
 // VERIFY: d3ad0327 auto
 
+// Not in the original: the index of a script event by name, or -1.
+int32_t FrameScript_FindEventIndex(const char* name) {
+    if (!name) {
+        return -1;
+    }
+
+    for (uint32_t i = 0; i < s_scriptEvents.Count(); i++) {
+        FrameScript_EventObject* event = s_scriptEvents[i];
+
+        if (event && event->m_key.m_str && !SStrCmpI(event->m_key.m_str, name, STORM_MAX_STR)) {
+            return static_cast<int32_t>(i);
+        }
+    }
+
+    return -1;
+}
+
 // ModernUI: see FrameScript_SetModernAddOnEnvironment.
 static bool s_modernUIAddOnEnvironment = false;
 

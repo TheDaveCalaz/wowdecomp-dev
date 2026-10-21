@@ -2,9 +2,8 @@
 -- /fstack (as on modern clients): a tooltip listing every shown frame under the mouse, top first, with its
 -- name or, for unnamed frames, the path from the nearest named parent. /fstack again turns it off.
 
-if SlashCmdList.FRAMESTACK then
-	return
-end
+-- This client already has a /framestack of its own (Blizzard_DebugTools); /fstack then opens this one.
+local ownSlash = SlashCmdList.FRAMESTACK == nil
 
 -- Where each unnamed top-level frame was made (the AddOn file and line), so stray frames can be traced.
 local sources = setmetatable({}, { __mode = "k" })
@@ -80,9 +79,18 @@ watcher:SetScript("OnUpdate", function(_, elapsed)
 	tooltip:Show()
 end)
 
-SLASH_FRAMESTACK1 = "/fstack"
-SLASH_FRAMESTACK2 = "/framestack"
-SlashCmdList.FRAMESTACK = function()
+local slashKey = ownSlash and "FRAMESTACK" or "MODERNUI_FRAMESTACK"
+-- Leave /framestack to the client's own and take /fstack for this one.
+for i = 1, 4 do
+	if _G["SLASH_FRAMESTACK" .. i] == "/fstack" then
+		_G["SLASH_FRAMESTACK" .. i] = nil
+	end
+end
+_G["SLASH_" .. slashKey .. "1"] = "/fstack"
+if ownSlash then
+	SLASH_FRAMESTACK2 = "/framestack"
+end
+SlashCmdList[slashKey] = function()
 	if watcher:IsShown() then
 		watcher:Hide()
 		tooltip:Hide()

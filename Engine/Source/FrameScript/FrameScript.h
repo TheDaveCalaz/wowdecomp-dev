@@ -78,6 +78,7 @@ void FrameScript_ResetCPUUsage();
 void FrameScript_SetPluralRule(PLURAL_RULE rule);
 void FrameScript_SignalEvent(uint32_t index, const char* format, ...);
 void FrameScript_SignalEvent(uint32_t index, lua_State* L, int32_t argCount);
+int32_t FrameScript_FindEventIndex(const char* name); // not in the original
 char* FrameScript_Sprintf(lua_State* L, int32_t index, char* buffer, uint32_t bufferLen);
 void FrameScript_UnregisterFunction(const char* name);
 void FrameScript_UnregisterScriptEvent(FrameScript_Object* object, FrameScript_EventObject* event);

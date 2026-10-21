@@ -19,6 +19,7 @@
 #include "WoW/Source/Ui/GameUI.h"
 #include "WoW/Source/Ui/HealthBar.h"
 #include "WoW/Source/Ui/RaidInfo.h"
+#include "WoW/Source/Ui/Types.h"
 #include "Engine/Source/ConsoleBase/ConsoleVar.h"
 
 // STATIC: 0x00AA34B8
@@ -69,6 +70,74 @@ void CGNamePlateFrame::operator delete(void* ptr) {
     if (ptr) {
         CGNamePlateFrame::s_namePlateHeap.PutData(ptr, nullptr, 0);
     }
+}
+
+// Not in the original client: modern nameplate unit tokens. Nameplate frames are pooled and reused, so each
+// keeps the number it was given when made; while it shows a unit, "nameplateN" names that unit.
+static TSGrowableArray<CGNamePlateFrame*> s_modernNamePlates;
+static TSGrowableArray<uint8_t> s_modernNamePlateInUse;
+
+static void ModernUI_RegisterNamePlate(CGNamePlateFrame* frame) {
+    uint32_t index = s_modernNamePlates.Count();
+    s_modernNamePlates.SetCount(index + 1);
+    s_modernNamePlateInUse.SetCount(index + 1);
+    s_modernNamePlates.m_data[index] = frame;
+    s_modernNamePlateInUse.m_data[index] = 0;
+    frame->m_modernIndex = index + 1;
+}
+
+CGNamePlateFrame* CGNamePlateFrame::ModernUI_FromIndex(uint32_t index) {
+    if (index < 1 || index > s_modernNamePlates.Count() || !s_modernNamePlateInUse.m_data[index - 1]) {
+        return nullptr;
+    }
+
+    if (!s_modernNamePlates.m_data[index - 1]) {
+        return nullptr;
+    }
+
+    return s_modernNamePlates.m_data[index - 1];
+}
+
+CGNamePlateFrame* CGNamePlateFrame::ModernUI_FromToken(const char* token) {
+    if (!token || SStrCmpI(token, "nameplate", 9)) {
+        return nullptr;
+    }
+
+    return CGNamePlateFrame::ModernUI_FromIndex(SStrToUnsigned(token + 9));
+}
+
+void CGNamePlateFrame::ModernUI_UnitAdded() {
+    uint32_t index = this->m_modernIndex;
+
+    if (index < 1 || index > s_modernNamePlates.Count()) {
+        return;
+    }
+
+    s_modernNamePlateInUse.m_data[index - 1] = 1;
+
+    // Modern nameplates are named NamePlate1, NamePlate2...; AddOns build names for their own frames from it.
+    if (!this->m_name.m_str) {
+        char name[32];
+        SStrPrintf(name, sizeof(name), "NamePlate%u", index);
+        this->SetName(name);
+    }
+
+    char token[32];
+    SStrPrintf(token, sizeof(token), "nameplate%u", index);
+    FrameScript_SignalEvent(SCRIPT_EVENT_NAME_PLATE_UNIT_ADDED, "%s", token);
+}
+
+void CGNamePlateFrame::ModernUI_UnitRemoved() {
+    uint32_t index = this->m_modernIndex;
+
+    if (index < 1 || index > s_modernNamePlates.Count() || !s_modernNamePlateInUse.m_data[index - 1]) {
+        return;
+    }
+
+    char token[32];
+    SStrPrintf(token, sizeof(token), "nameplate%u", index);
+    FrameScript_SignalEvent(SCRIPT_EVENT_NAME_PLATE_UNIT_REMOVED, "%s", token);
+    s_modernNamePlateInUse.m_data[index - 1] = 0;
 }
 
 // VERIFY: eb556f09 auto
@@ -526,6 +595,7 @@ void CGNamePlateFrame::Initialize(CGUnit_C* unit) {
 // VERIFY: 1dffc031 manual
 // OFFSET: 0x0098F790
 CGNamePlateFrame::CGNamePlateFrame(CSimpleFrame* parent) : CSimpleFrame(parent), m_damageFeedbackTime(0) {
+    ModernUI_RegisterNamePlate(this);
     this->SetProtected();
     this->SetFrameFlag(0x40000, 1);
     this->m_guid.m_guid = 0;
@@ -658,4 +728,11 @@ CGNamePlateFrame::CGNamePlateFrame(CSimpleFrame* parent) : CSimpleFrame(parent),
 // VERIFY: 44471dc3 manual
 // OFFSET: [0x0098FFE0, 0x00990030]
 CGNamePlateFrame::~CGNamePlateFrame() {
+    // ModernUI: the frame's token no longer names anything.
+    uint32_t index = this->m_modernIndex;
+
+    if (index >= 1 && index <= s_modernNamePlates.Count() && s_modernNamePlates.m_data[index - 1] == this) {
+        s_modernNamePlates.m_data[index - 1] = nullptr;
+        s_modernNamePlateInUse.m_data[index - 1] = 0;
+    }
 }

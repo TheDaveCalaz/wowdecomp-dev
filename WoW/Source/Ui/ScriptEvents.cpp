@@ -1,3 +1,4 @@
+#include "WoW/Source/Ui/NamePlateFrame.h"
 #include <cstdint>
 #include "Engine/Source/Storm/H/stpl.h"
 #include "Engine/Source/FrameScript/FrameScript.h"
@@ -121,6 +122,15 @@ bool Script_GetGUIDFromToken(const char* token, WOWGUID& guid, bool defaultToTar
 
         if (!guid) {
             guid = ModernUI_GetLoginGUID();
+        }
+    } else if (!SStrCmpI(token, "nameplate", 9)) {
+        // ModernUI: "nameplateN", the unit shown on nameplate N (modern clients).
+        CGNamePlateFrame* plate = CGNamePlateFrame::ModernUI_FromToken(token);
+        guid = plate ? plate->m_guid : WOWGUID();
+        token += 9;
+
+        while (*token >= '0' && *token <= '9') {
+            token++;
         }
     } else if (!SStrCmpI(token, "vehicle", 7)) {
         token += 7;
