@@ -19,6 +19,7 @@ Settings.Default = Settings.Default or { True = true, False = false }
 Settings.CategorySet = Settings.CategorySet or { Game = 1, AddOns = 2 }
 
 local categories = {}   -- id -> category
+local categoryLayouts = {} -- category -> layout (SettingsPanel.categoryLayouts on modern clients)
 local nextID = 1000
 
 local CategoryMixin = {}
@@ -45,6 +46,7 @@ local function newCategory(frame, name, parent)
 		tinsert(parent.subcategories, category)
 	end
 	categories[category.ID] = category
+	categoryLayouts[category] = { frame = frame }
 	return category
 end
 
@@ -64,14 +66,20 @@ end
 function Settings.RegisterCanvasLayoutCategory(frame, name)
 	frame.name = frame.name or name
 	local category = newCategory(frame, name)
-	return category, newLayout("canvas")
+	local layout = newLayout("canvas")
+	layout.frame = frame
+	categoryLayouts[category] = layout
+	return category, layout
 end
 
 function Settings.RegisterCanvasLayoutSubcategory(parentCategory, frame, name)
 	frame.name = frame.name or name
 	frame.parent = parentCategory and parentCategory.name
 	local category = newCategory(frame, name, parentCategory)
-	return category, newLayout("canvas")
+	local layout = newLayout("canvas")
+	layout.frame = frame
+	categoryLayouts[category] = layout
+	return category, layout
 end
 
 -- Vertical pages: the AddOn lists settings and the client draws them.
@@ -83,6 +91,8 @@ function Settings.RegisterVerticalLayoutCategory(name)
 	frame.name = name
 	local category = newCategory(frame, name)
 	category.layout = newLayout("vertical")
+	category.layout.frame = frame
+	categoryLayouts[category] = category.layout
 	frame:SetScript("OnShow", function(self) buildVertical(self, category) end)
 	return category, category.layout
 end
@@ -397,6 +407,15 @@ if _G.SettingsPanel == nil and _G.InterfaceOptionsFrame then
 	list:SetHeight(1)
 	list:SetPoint("TOPLEFT")
 	panel.CategoryList = list
+	panel.categoryLayouts = categoryLayouts
+	-- Modern code shows the settings window with SettingsPanel:Show() and redraws its category list.
+	list.CreateCategories = function() end
+	list.GetCategoryEntry = function() return nil end
+	local showPanel = panel.Show
+	panel.Show = function(self)
+		showPanel(self)
+		InterfaceOptionsFrame:Show()
+	end
 	panel.Container = CreateFrame("Frame", nil, panel)
 	panel.Container.SettingsList = CreateFrame("Frame", nil, panel.Container)
 	function panel:Open()

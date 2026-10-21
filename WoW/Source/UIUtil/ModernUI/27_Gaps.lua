@@ -1170,3 +1170,41 @@ do
 		end))
 	end)
 end
+
+-- Widget metatables by kind, as modern clients hand them out.
+do
+	local probe = CreateFrame("Frame")
+	probe:Hide()
+	local cache = {}
+	local function metatableOf(kind)
+		if cache[kind] == nil then
+			local object
+			if kind == "FontString" then
+				object = probe:CreateFontString()
+			elseif kind == "Texture" then
+				object = probe:CreateTexture()
+			else
+				local ok, frame = pcall(CreateFrame, kind, nil, probe)
+				object = ok and frame or nil
+			end
+			cache[kind] = object and getmetatable(object) or false
+		end
+		return cache[kind] or nil
+	end
+	for _, kind in ipairs({ "Frame", "Button", "CheckButton", "EditBox", "ScrollFrame", "Slider", "StatusBar",
+		"Cooldown", "GameTooltip", "MessageFrame", "ScrollingMessageFrame", "Model", "PlayerModel", "ColorSelect",
+		"SimpleHTML", "Minimap", "FontString", "Texture" }) do
+		define("Get" .. kind .. "Metatable", function() return metatableOf(kind) end)
+	end
+end
+
+-- Quest reward buttons by index (this client names them QuestInfoItem1, 2...).
+define("QuestInfo_GetRewardButton", function(rewardsFrame, index)
+	return _G["QuestInfoItem" .. index]
+end)
+
+for name, value in pairs({ LE_LFG_CATEGORY_LFD = 1, LE_LFG_CATEGORY_LFR = 2, LE_LFG_CATEGORY_RF = 3,
+	LE_LFG_CATEGORY_SCENARIO = 4, LE_LFG_CATEGORY_FLEXRAID = 5, LE_LFG_CATEGORY_WORLDPVP = 6,
+	LE_LFG_CATEGORY_BATTLEFIELD = 7 }) do
+	define(name, value)
+end

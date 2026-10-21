@@ -968,7 +968,7 @@ do
 			topTexCoord = top, bottomTexCoord = bottom, tilesHorizontally = false, tilesVertically = false }
 	end)
 	set("GetAtlasElements", emptyFn)
-	set("GetFilenameFromFileDataID", nilFn)
+	set("GetFilenameFromFileDataID", function(id) return ModernUI_GetFilenameFromFileID and ModernUI_GetFilenameFromFileID(id) or nil end)
 end
 do
 	-- 3.3.5 nameplates have no unit tokens, so nothing can be returned for a unit.

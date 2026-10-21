@@ -20,6 +20,7 @@
 #include "Engine/Source/Frame/SimpleFrameScript.h"
 #include "Engine/Source/FrameScript/FrameScript.h"
 #include "Engine/Source/Frame/ModernUIMarkup.h"
+#include "Engine/Source/Frame/ModernUIFiles.h"
 #include "Engine/Source/FrameScript/FrameScript_Object.h"
 #include "Engine/Source/FrameXML/FrameXML.h"
 #include "Engine/Source/FrameXML/LoadXML.h"
@@ -1596,6 +1597,29 @@ static int32_t Script_ModernUI_GetAtlasInfo(lua_State* L) {
     lua_pushnumber(L, top);
     lua_pushnumber(L, bottom);
     return 7;
+}
+
+// GetFileIDFromPath(path) and C_Texture.GetFilenameFromFileDataID(id), from ModernUI_FileIDs.txt.
+static int32_t Script_GetFileIDFromPath(lua_State* L) {
+    uint32_t id = lua_isstring(L, 1) ? ModernUI_FileIDForPath(lua_tolstring(L, 1, nullptr)) : 0;
+
+    if (!id) {
+        return 0;
+    }
+
+    lua_pushnumber(L, id);
+    return 1;
+}
+
+static int32_t Script_ModernUI_GetFilenameFromFileID(lua_State* L) {
+    const char* path = lua_isnumber(L, 1) ? ModernUI_PathForFileID(static_cast<uint32_t>(lua_tonumber(L, 1))) : nullptr;
+
+    if (!path) {
+        return 0;
+    }
+
+    lua_pushstring(L, path);
+    return 1;
 }
 
 bool ModernUI_CopyToClipboard(const char* text);
@@ -6541,6 +6565,8 @@ static FrameScript_Method s_ScriptFunctions[] = {
     { "ModernUI_RegisterColorName", &Script_ModernUI_RegisterColorName },
     { "ModernUI_GetAtlasInfo", &Script_ModernUI_GetAtlasInfo },
     { "CopyToClipboard", &Script_CopyToClipboard },
+    { "GetFileIDFromPath", &Script_GetFileIDFromPath },
+    { "ModernUI_GetFilenameFromFileID", &Script_ModernUI_GetFilenameFromFileID },
     { "ModernUI_DebugPlayerGUID", &Script_ModernUI_DebugPlayerGUID },
     { "ModernUI_SaveData", &Script_ModernUI_SaveData },
     { "SetCVar", &Script_SetCVar },

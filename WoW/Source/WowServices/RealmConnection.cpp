@@ -1,3 +1,4 @@
+#include "WoW/Source/WowSvcs/WowSvcsClient/ClientServices.h"
 #include "RealmConnection.h"
 #include "Engine/Source/BlizzardCore/Source/Packages/Util/SHA1.h"
 #include "Engine/Source/Os/TimeManager.h"
@@ -412,7 +413,14 @@ void RealmConnection::RequestCharacterEnum() {
 static WOWGUID s_modernUILoginGUID;
 
 WOWGUID ModernUI_GetLoginGUID() {
-    return s_modernUILoginGUID;
+    if (s_modernUILoginGUID) {
+        return s_modernUILoginGUID;
+    }
+
+    // The game UI and AddOns load before the login request is sent; by then the character chosen at
+    // character select is already known.
+    CHARACTER_INFO* info = ClientServices::GetCharacterInfo();
+    return info ? info->m_guid : WOWGUID();
 }
 
 void RealmConnection::RequestCharacterLogin(WOWGUID guid, int32_t a2) {

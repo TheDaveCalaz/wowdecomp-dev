@@ -20,6 +20,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force out | Out-Null
           Get-ChildItem bin -Recurse -Include *.exe,*.dll,*.pdb | Copy-Item -Destination out
+          Copy-Item Data/ModernUI_FileIDs.txt -Destination out
           Get-ChildItem out | Format-Table Name, Length
       - uses: actions/upload-artifact@v4
         with:

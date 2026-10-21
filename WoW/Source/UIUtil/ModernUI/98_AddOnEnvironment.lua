@@ -1,0 +1,116 @@
+-- ModernUI: built into the client (not in the original 3.3.5a).
+-- The environment the Lua files of AddOns written for modern clients run in (set natively when such an
+-- AddOn loads, from its .toc's Interface line). A handful of functions kept their names on modern clients
+-- but return their values in a different order (UnitAura lost the spell rank, GetQuestLogTitle lost the
+-- quest tag, UnitGroupRolesAssigned returns a role name...). This client's own interface code needs the
+-- 3.3.5 shapes, so the global functions keep them; modern AddOns see the modern shapes here instead.
+-- Everything else is the ordinary global table: reads fall through to it and writes go straight into it.
+
+local _G = _G
+local select, type, tonumber, match = select, type, tonumber, string.match
+
+local modern = setmetatable({}, { __index = _G })
+_G.ModernUI_AddOnEnvironment = setmetatable({}, { __index = modern, __newindex = _G })
+_G.ModernUI_ModernAPI = modern -- the modern-shape functions, for code that wants them explicitly
+
+-- The spell ID of a spell known by name, where the client can tell (spells in the player's spellbook).
+local function spellIDByName(name)
+	local link = name and GetSpellLink and GetSpellLink(name)
+	return link and tonumber(match(link, "spell:(%d+)")) or nil
+end
+local function isPlayerSide(unit)
+	return unit == "player" or unit == "pet" or unit == "vehicle"
+end
+
+-- Auras: name, icon, count, dispelType, duration, expirationTime, source, isStealable,
+-- nameplateShowPersonal, spellId, canApplyAura, isBossDebuff, castByPlayer, nameplateShowAll, timeMod.
+local UnitAura_335, UnitBuff_335, UnitDebuff_335 = _G.UnitAura, _G.UnitBuff, _G.UnitDebuff
+local function reshapeAura(name, _, icon, count, debuffType, duration, expirationTime, caster, isStealable, _, spellId)
+	if not name then
+		return nil
+	end
+	return name, icon, count or 0, debuffType, duration or 0, expirationTime or 0, caster, isStealable and true or false,
+		false, spellId, false, false, isPlayerSide(caster), false, 1
+end
+modern.UnitAura = function(unit, index, filter) return reshapeAura(UnitAura_335(unit, index, filter)) end
+modern.UnitBuff = function(unit, index, filter) return reshapeAura(UnitBuff_335(unit, index, filter)) end
+modern.UnitDebuff = function(unit, index, filter) return reshapeAura(UnitDebuff_335(unit, index, filter)) end
+
+-- Quest log: title, level, suggestedGroup, isHeader, isCollapsed, isComplete, frequency, questID,
+-- startEvent, displayQuestID, isOnMap, hasLocalPOI, isTask, isBounty, isStory, isHidden, isScaling.
+local GetQuestLogTitle_335 = _G.GetQuestLogTitle
+modern.GetQuestLogTitle = function(index)
+	local title, level, _, suggestedGroup, isHeader, isCollapsed, isComplete, isDaily, questID = GetQuestLogTitle_335(index)
+	if not title then
+		return nil
+	end
+	return title, level, suggestedGroup or 0, isHeader and true or false, isCollapsed and true or false, isComplete,
+		isDaily and 2 or 1, questID or 0, false, false, false, false, false, false, false, false, false
+end
+
+-- Casts: name, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible, spellId.
+local UnitCastingInfo_335, UnitChannelInfo_335 = _G.UnitCastingInfo, _G.UnitChannelInfo
+modern.UnitCastingInfo = function(unit)
+	local name, _, text, texture, startTime, endTime, isTradeSkill, castID, notInterruptible = UnitCastingInfo_335(unit)
+	if not name then
+		return nil
+	end
+	return name, text, texture, startTime, endTime, isTradeSkill and true or false, castID, notInterruptible and true or false,
+		isPlayerSide(unit) and spellIDByName(name) or nil
+end
+modern.UnitChannelInfo = function(unit)
+	local name, _, text, texture, startTime, endTime, isTradeSkill, notInterruptible = UnitChannelInfo_335(unit)
+	if not name then
+		return nil
+	end
+	return name, text, texture, startTime, endTime, isTradeSkill and true or false, notInterruptible and true or false,
+		isPlayerSide(unit) and spellIDByName(name) or nil
+end
+
+-- Spells: name, rank, icon, castTime, minRange, maxRange, spellID, originalIcon.
+local GetSpellInfo_335 = _G.GetSpellInfo
+modern.GetSpellInfo = function(spell, rank)
+	local name, spellRank, icon, _, _, _, castTime, minRange, maxRange = GetSpellInfo_335(spell, rank)
+	if not name then
+		return nil
+	end
+	local id = type(spell) == "number" and spell or tonumber(spell) or spellIDByName(name)
+	return name, spellRank, icon, castTime, minRange, maxRange, id, icon
+end
+
+-- Loot: texture, item, quantity, currencyID, quality, locked, isQuestItem, questID, isActive.
+local GetLootSlotInfo_335 = _G.GetLootSlotInfo
+modern.GetLootSlotInfo = function(slot)
+	local texture, item, quantity, quality, locked = GetLootSlotInfo_335(slot)
+	if not texture then
+		return nil
+	end
+	return texture, item, quantity, nil, quality, locked, false, nil, false
+end
+
+-- Roles: one role name instead of three flags.
+local UnitGroupRolesAssigned_335 = _G.UnitGroupRolesAssigned
+modern.UnitGroupRolesAssigned = function(unit)
+	local tank, healer, damage = UnitGroupRolesAssigned_335(unit)
+	return tank and "TANK" or healer and "HEALER" or damage and "DAMAGER" or "NONE"
+end
+
+-- Shapeshift forms: icon, active, castable, spellID.
+local GetShapeshiftFormInfo_335 = _G.GetShapeshiftFormInfo
+modern.GetShapeshiftFormInfo = function(index)
+	local texture, name, isActive, isCastable = GetShapeshiftFormInfo_335(index)
+	if not texture then
+		return nil
+	end
+	return texture, isActive and true or false, isCastable and true or false, spellIDByName(name)
+end
+
+-- Pet actions: name, texture, isToken, isActive, autoCastAllowed, autoCastEnabled, spellID, hasRange, inRange.
+local GetPetActionInfo_335 = _G.GetPetActionInfo
+modern.GetPetActionInfo = function(index)
+	local name, _, texture, isToken, isActive, autoCastAllowed, autoCastEnabled = GetPetActionInfo_335(index)
+	if not name then
+		return nil
+	end
+	return name, texture, isToken, isActive, autoCastAllowed, autoCastEnabled, not isToken and spellIDByName(name) or nil, false, false
+end

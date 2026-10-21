@@ -807,6 +807,16 @@ int32_t FrameScript_LoadVariables(const char* filename, CStatus* status) {
 }
 
 // VERIFY: d3ad0327 auto
+
+// ModernUI: see FrameScript_SetModernAddOnEnvironment.
+static bool s_modernUIAddOnEnvironment = false;
+
+bool FrameScript_SetModernAddOnEnvironment(bool enabled) {
+    bool previous = s_modernUIAddOnEnvironment;
+    s_modernUIAddOnEnvironment = enabled;
+    return previous;
+}
+
 // OFFSET: 0x00818E50
 int32_t FrameScript_ExecuteBuffer(const char* buffer, size_t bytes, const char* bufferName, CStatus* status, const char* wrapper) {
     lua_State* L = s_context;
@@ -823,6 +833,18 @@ int32_t FrameScript_ExecuteBuffer(const char* buffer, size_t bytes, const char* 
         }
 
         return 0;
+    }
+
+    // ModernUI: Lua files of AddOns written for modern clients run in the modern API environment, where the
+    // functions whose returns changed shape since 3.3.5 answer in the modern shape.
+    if (s_modernUIAddOnEnvironment) {
+        lua_getfield(L, LUA_GLOBALSINDEX, "ModernUI_AddOnEnvironment");
+
+        if (lua_istable(L, -1)) {
+            lua_setfenv(L, -2);
+        } else {
+            lua_pop(L, 1);
+        }
     }
 
     int32_t args = 0;

@@ -11,6 +11,10 @@
 			<TileSize><AbsValue val="16"/></TileSize>
 			<BackgroundInsets><AbsInset left="5" right="5" top="5" bottom="5"/></BackgroundInsets>
 		</Backdrop>
+		<Frames>
+			<!-- Modern tooltip backdrops draw their border on a NineSlice child; code counts and reaches it. -->
+			<Frame parentKey="NineSlice" setAllPoints="true" enableMouse="false"/>
+		</Frames>
 		<Scripts>
 			<OnLoad>
 				self:SetBackdropColor(0, 0, 0, 0.9)
@@ -125,6 +129,7 @@
 			</Layer>
 		</Layers>
 		<Frames>
+			<Frame parentKey="NineSlice" setAllPoints="true" enableMouse="false"/>
 			<Frame name="$parentTitleContainer" parentKey="TitleContainer">
 				<Size><AbsDimension x="0" y="20"/></Size>
 				<Anchors>
@@ -182,6 +187,14 @@
 			<TileSize><AbsValue val="16"/></TileSize>
 			<BackgroundInsets><AbsInset left="3" right="3" top="3" bottom="3"/></BackgroundInsets>
 		</Backdrop>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Bg" hidden="true" setAllPoints="true"/>
+			</Layer>
+		</Layers>
+		<Frames>
+			<Frame parentKey="NineSlice" setAllPoints="true" enableMouse="false"/>
+		</Frames>
 		<Scripts>
 			<OnLoad>
 				self:SetBackdropColor(0, 0, 0, 0.5)
@@ -199,6 +212,11 @@
 			<TileSize><AbsValue val="32"/></TileSize>
 			<BackgroundInsets><AbsInset left="11" right="12" top="12" bottom="11"/></BackgroundInsets>
 		</Backdrop>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Bg" hidden="true" setAllPoints="true"/>
+			</Layer>
+		</Layers>
 	</Frame>
 	<Frame name="DialogBorderDarkTemplate" virtual="true" setAllPoints="true">
 		<Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background-Dark" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
@@ -206,6 +224,11 @@
 			<TileSize><AbsValue val="32"/></TileSize>
 			<BackgroundInsets><AbsInset left="11" right="12" top="12" bottom="11"/></BackgroundInsets>
 		</Backdrop>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Bg" hidden="true" setAllPoints="true"/>
+			</Layer>
+		</Layers>
 	</Frame>
 	<Frame name="DialogBorderOpaqueTemplate" virtual="true" setAllPoints="true">
 		<Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background-Dark" edgeFile="Interface\DialogFrame\UI-DialogBox-Border" tile="true">
@@ -213,6 +236,11 @@
 			<TileSize><AbsValue val="32"/></TileSize>
 			<BackgroundInsets><AbsInset left="11" right="12" top="12" bottom="11"/></BackgroundInsets>
 		</Backdrop>
+		<Layers>
+			<Layer level="BACKGROUND">
+				<Texture parentKey="Bg" hidden="true" setAllPoints="true"/>
+			</Layer>
+		</Layers>
 		<Scripts>
 			<OnLoad>
 				self:SetBackdropColor(0, 0, 0, 1)

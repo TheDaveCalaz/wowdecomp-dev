@@ -484,11 +484,13 @@ addTo("AnimationGroup", "SetAnimationSpeedMultiplier", noop)
 do
 	local index = methodTables.AnimationGroup
 	local CreateAnimation = index and index.CreateAnimation
-	local known = { Animation = true, Alpha = true, Scale = true, Translation = true, Rotation = true, Path = true }
+	-- Type names are matched without regard to case, as the client does ("TRANSLATION" is Translation).
+	local known = { animation = "Animation", alpha = "Alpha", scale = "Scale", translation = "Translation",
+		rotation = "Rotation", path = "Path" }
 	if CreateAnimation then
 		index.CreateAnimation = function(self, kind, name, inherits)
-			if kind and not known[kind] then
-				kind = "Animation"
+			if type(kind) == "string" then
+				kind = known[kind:lower()] or "Animation"
 			end
 			return CreateAnimation(self, kind, name, inherits)
 		end

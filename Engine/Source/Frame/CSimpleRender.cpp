@@ -2,6 +2,7 @@
 #include <cstdint>
 #include "Engine/Source/Frame/CSimpleRender.h"
 #include "Engine/Source/Frame/ModernUIMarkup.h"
+#include "Engine/Source/Frame/ModernUIFiles.h"
 #include <malloc.h>
 #include <cctype>
 #include <cstring>
@@ -2391,9 +2392,36 @@ int32_t CSimpleTexture::SetTexture(const char* fileName, int32_t wrapU, int32_t 
 
     CTexture* texture = nullptr;
 
+    // ModernUI: a file number names the file it stands for on modern clients.
+    char resolved[300];
+
+    if (fileName && ModernUI_ResolveFileID(fileName, resolved, sizeof(resolved))) {
+        fileName = resolved;
+    }
+
     if (fileName && *fileName) {
         CStatus status;
         texture = TextureCreate(fileName, CGxTexFlags(filter, wrapU, wrapV, 0, 0, 0, 1), &status, 0x17);
+
+        // ModernUI: textures this client lacks may have been exported from a modern client into
+        // Interface\ModernArt\.
+        char modernArt[320];
+
+        if (status.m_highestSeverity >= STATUS_ERROR && ModernUI_ModernArtPath(fileName, modernArt, sizeof(modernArt))) {
+            CStatus artStatus;
+            CTexture* art = TextureCreate(modernArt, CGxTexFlags(filter, wrapU, wrapV, 0, 0, 0, 1), &artStatus, 0x17);
+
+            if (artStatus.m_highestSeverity < STATUS_ERROR) {
+                if (texture) {
+                    HandleClose(reinterpret_cast<HOBJECT>(texture));
+                }
+
+                texture = art;
+                status.Clear();
+            } else if (art) {
+                HandleClose(reinterpret_cast<HOBJECT>(art));
+            }
+        }
 
         if (status.m_highestSeverity >= STATUS_ERROR) {
             HandleClose(reinterpret_cast<HOBJECT>(texture));
