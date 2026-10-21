@@ -1217,3 +1217,33 @@ for name, value in pairs({ LE_QUEST_TAG_TYPE_TAG = 0, LE_QUEST_TAG_TYPE_PROFESSI
 	LE_QUEST_TAG_TYPE_COVENANT_CALLING = 15 }) do
 	define(name, value)
 end
+
+-- Smaller helpers found missing against the ClassicAPI AddOn's coverage.
+do
+	local spellBook = namespaceSet("C_SpellBook")
+	spellBook("GetSpellLinkFromSpellID", function(spell) return GetSpellLink(spell) end)
+	local chatInfo = namespaceSet("C_ChatInfo")
+	chatInfo("GetColorForChatType", function(chatType)
+		local info = ChatTypeInfo and ChatTypeInfo[chatType]
+		if info and CreateColor then
+			return CreateColor(info.r or 1, info.g or 1, info.b or 1, 1)
+		end
+	end)
+end
+
+define("GetGroupMemberCountsForDisplay", function()
+	local data = { TANK = 0, HEALER = 0, DAMAGER = 0, NOROLE = 0 }
+	if GetGroupMemberCounts then
+		data = GetGroupMemberCounts()
+	end
+	data.DAMAGER = (data.DAMAGER or 0) + (data.NOROLE or 0)
+	data.NOROLE = 0
+	return data
+end)
+
+define("CooldownFrame_SetDisplayAsPercentage", function(self, percentage)
+	self:SetCooldown(GetTime() - 100 * (percentage or 0), 100)
+end)
+
+-- Tooltip owners that pass clicks through: this client has no PropagateMouseClicks, so leave the mouse on.
+define("PropagateTooltipMouseClicks", function(self) end)
