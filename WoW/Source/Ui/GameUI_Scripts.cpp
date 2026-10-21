@@ -1637,6 +1637,40 @@ static int32_t Script_ModernUI_SignalEvent(lua_State* L) {
     return 0;
 }
 
+// ModernUI_AddEvent(name): makes an event the client does not have (a modern event) registrable, so
+// RegisterEvent accepts it and ModernUI_SignalEvent can fire it. Returns true when the event exists.
+static int32_t Script_ModernUI_AddEvent(lua_State* L) {
+    lua_pushboolean(L, lua_isstring(L, 1) && FrameScript_AddEvent(lua_tolstring(L, 1, nullptr)) >= 0);
+    return 1;
+}
+
+// ModernUI_SetObjectModern(object, modern): whether the object belongs to an AddOn for modern clients
+// (its OnEvent then receives arguments in the modern layout). ModernUI_IsObjectModern(object) reads it.
+static int32_t Script_ModernUI_SetObjectModern(lua_State* L) {
+    if (lua_type(L, 1) != LUA_TTABLE) {
+        return 0;
+    }
+
+    lua_rawgeti(L, 1, 0);
+    FrameScript_Object* object = static_cast<FrameScript_Object*>(static_cast<CScriptObject*>(lua_touserdata(L, -1)));
+    lua_settop(L, -2);
+    FrameScript_SetObjectModern(object, lua_isnoneornil(L, 2) || lua_toboolean(L, 2));
+    return 0;
+}
+
+static int32_t Script_ModernUI_IsObjectModern(lua_State* L) {
+    FrameScript_Object* object = nullptr;
+
+    if (lua_type(L, 1) == LUA_TTABLE) {
+        lua_rawgeti(L, 1, 0);
+        object = static_cast<FrameScript_Object*>(static_cast<CScriptObject*>(lua_touserdata(L, -1)));
+        lua_settop(L, -2);
+    }
+
+    lua_pushboolean(L, FrameScript_IsObjectModern(object));
+    return 1;
+}
+
 // ModernUI_GetNamePlateFrame(tokenOrIndex) -> the nameplate frame showing that unit, or nothing.
 static int32_t Script_ModernUI_GetNamePlateFrame(lua_State* L) {
     CGNamePlateFrame* plate = nullptr;
@@ -6604,6 +6638,9 @@ static FrameScript_Method s_ScriptFunctions[] = {
     { "ModernUI_GetAtlasInfo", &Script_ModernUI_GetAtlasInfo },
     { "CopyToClipboard", &Script_CopyToClipboard },
     { "ModernUI_SignalEvent", &Script_ModernUI_SignalEvent },
+    { "ModernUI_AddEvent", &Script_ModernUI_AddEvent },
+    { "ModernUI_SetObjectModern", &Script_ModernUI_SetObjectModern },
+    { "ModernUI_IsObjectModern", &Script_ModernUI_IsObjectModern },
     { "ModernUI_GetNamePlateFrame", &Script_ModernUI_GetNamePlateFrame },
     { "GetFileIDFromPath", &Script_GetFileIDFromPath },
     { "ModernUI_GetFilenameFromFileID", &Script_ModernUI_GetFilenameFromFileID },

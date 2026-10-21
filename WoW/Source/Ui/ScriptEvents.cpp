@@ -985,7 +985,8 @@ void Script_SendUnitSpellSignal(const WOWGUID& guid, uint8_t castCount, const Sp
     char** tokens = Script_GetTokenIDsFromGUID(guid, &count);
 
     for (int32_t i = 0; i < count; i++) {
-        FrameScript_SignalEvent(signal, "%s%s%s%d", tokens[i], spell->m_name, spell->m_nameSubtext, castCount);
+        // ModernUI: the spell ID follows, as on later clients (modern AddOns read it from the arguments).
+        FrameScript_SignalEvent(signal, "%s%s%s%d%d", tokens[i], spell->m_name, spell->m_nameSubtext, castCount, spell->m_id);
     }
 }
 

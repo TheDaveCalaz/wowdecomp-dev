@@ -7853,7 +7853,7 @@ void Spell_C::SendPendingCast(PendingSpellCast* cast, bool hideVisuals) {
     input->UpdateMouseMode(0);
 
     if (caster->IsActivePlayer()) {
-        FrameScript_SignalEvent(SCRIPT_EVENT_UNIT_SPELLCAST_SENT, "%s%s%s%s", "player", spell.m_name, spell.m_nameSubtext, cast->m_data.m_objectTarget ? GetObjectNameFromGuid(cast->m_data.m_objectTarget) : "");
+        FrameScript_SignalEvent(SCRIPT_EVENT_UNIT_SPELLCAST_SENT, "%s%s%s%s%d", "player", spell.m_name, spell.m_nameSubtext, cast->m_data.m_objectTarget ? GetObjectNameFromGuid(cast->m_data.m_objectTarget) : "", spell.m_id); // ModernUI: + spell ID
     }
 
     if (!hideVisuals) {

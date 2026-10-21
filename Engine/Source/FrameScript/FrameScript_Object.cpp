@@ -91,11 +91,17 @@ FrameScript_Object::ScriptIx::~ScriptIx() {
 FrameScript_Object::FrameScript_Object() {
     this->m_luaRegistered = 0;
     this->m_luaObjectRef = LUA_NOREF;
+
+    // ModernUI: made while a modern AddOn loads (its XML, its Lua files), so it is that AddOn's.
+    if (FrameScript_IsModernAddOnEnvironment()) {
+        FrameScript_SetObjectModern(this, true);
+    }
 }
 
 // VERIFY: b0bf6152 auto
 // OFFSET: [0x00819850, 0x00819E50]
 FrameScript_Object::~FrameScript_Object() {
+    FrameScript_SetObjectModern(this, false);
 }
 
 // VERIFY: 12e14749 auto

@@ -49,6 +49,12 @@ void FrameScript_Execute(const char* source, const char* filename, const char* t
 void FrameScript_Execute(int32_t function, FrameScript_Object* object, int32_t argCount, const char* taint, FrameScript_EventObject* event);
 // Not in the original: while enabled, Lua files run in ModernUI_AddOnEnvironment (AddOns for modern clients).
 bool FrameScript_SetModernAddOnEnvironment(bool enabled); // returns the previous setting
+bool FrameScript_IsModernAddOnEnvironment();
+// Not in the original: objects of modern AddOns get event arguments in the modern layout.
+void FrameScript_SetObjectModern(const FrameScript_Object* object, bool modern);
+bool FrameScript_IsObjectModern(const FrameScript_Object* object);
+// Not in the original: adds an event the client does not have; returns its index.
+int32_t FrameScript_AddEvent(const char* name);
 int32_t FrameScript_ExecuteBuffer(const char* buffer, size_t bytes, const char* bufferName, CStatus* status, const char* wrapper);
 int32_t FrameScript_ExecuteFile(const char* filename, const char* wrapper, MD5_CTX* md5, CStatus* status);
 void FrameScript_Flush();

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <malloc.h>
+#include <unordered_set>
 #include "Engine/Source/FrameScript/FrameScript.h"
 #include "Engine/Source/FrameScript/FrameScript_Object.h"
 #include "Engine/Source/Base/Status.h"
@@ -828,6 +829,65 @@ int32_t FrameScript_FindEventIndex(const char* name) {
 // ModernUI: see FrameScript_SetModernAddOnEnvironment.
 static bool s_modernUIAddOnEnvironment = false;
 
+// ModernUI: objects belonging to AddOns written for modern clients. Their OnEvent scripts receive event
+// arguments in the modern layout (ModernUI_ReshapeEvent in Lua decides the layout of each event).
+static std::unordered_set<const FrameScript_Object*> s_modernObjects;
+
+bool FrameScript_IsModernAddOnEnvironment() {
+    return s_modernUIAddOnEnvironment;
+}
+
+void FrameScript_SetObjectModern(const FrameScript_Object* object, bool modern) {
+    if (!object) {
+        return;
+    }
+
+    if (modern) {
+        s_modernObjects.insert(object);
+    } else {
+        s_modernObjects.erase(object);
+    }
+}
+
+bool FrameScript_IsObjectModern(const FrameScript_Object* object) {
+    return object && !s_modernObjects.empty() && s_modernObjects.count(object) != 0;
+}
+
+// ModernUI: an event the original client does not have (modern events), added after the client's own.
+int32_t FrameScript_AddEvent(const char* name) {
+    if (!name || !*name) {
+        return -1;
+    }
+
+    int32_t existing = FrameScript_FindEventIndex(name);
+
+    if (existing >= 0) {
+        return existing;
+    }
+
+    uint32_t count = s_scriptEvents.Count();
+    FrameScript_EventObject** saved = static_cast<FrameScript_EventObject**>(alloca(sizeof(FrameScript_EventObject*) * (count ? count : 1)));
+
+    for (uint32_t i = 0; i < count; i++) {
+        saved[i] = s_scriptEvents[i];
+    }
+
+    s_scriptEvents.SetCount(count + 1);
+
+    for (uint32_t i = 0; i < count; i++) {
+        s_scriptEvents[i] = saved[i];
+    }
+
+    FrameScript_EventObject* event = s_scriptEventsHash.Ptr(name);
+
+    if (!event) {
+        event = s_scriptEventsHash.New(name, 0, 0);
+    }
+
+    s_scriptEvents[count] = event;
+    return static_cast<int32_t>(count);
+}
+
 bool FrameScript_SetModernAddOnEnvironment(bool enabled) {
     bool previous = s_modernUIAddOnEnvironment;
     s_modernUIAddOnEnvironment = enabled;
@@ -1588,6 +1648,11 @@ void FrameScript_SignalEvent(uint32_t index, lua_State* L, int32_t argCount) {
 
     EVENTLISTENERNODE* node = event->m_listeners.Head();
 
+    // ModernUI: the arguments in the modern layout, made on the first modern listener (see s_modernObjects).
+    int32_t originalBase = lua_gettop(L) - argCount + 1;
+    int32_t modernBase = 0;
+    int32_t modernCount = -1;
+
     while (!event->m_listeners.IsEnd(node)) {
         EVENTLISTENERNODE* next = event->m_listeners.RawNext(node);
         int32_t unregistered = 0;
@@ -1603,15 +1668,54 @@ void FrameScript_SignalEvent(uint32_t index, lua_State* L, int32_t argCount) {
             FrameScript_Object::ScriptIx& script = node->m_listener->m_onEvent;
 
             if (script.m_luaRef) {
-                for (int32_t i = argCount; i > 0; i--) {
-                    lua_pushvalue(L, -argCount);
+                bool modern = FrameScript_IsObjectModern(node->m_listener);
+
+                if (modern && modernCount < 0) {
+                    modernCount = 0;
+                    int32_t before = lua_gettop(L);
+                    lua_getglobal(L, "ModernUI_ReshapeEvent");
+
+                    if (lua_isfunction(L, -1)) {
+                        lua_checkstack(L, argCount + 2);
+
+                        for (int32_t i = 0; i < argCount; i++) {
+                            lua_pushvalue(L, originalBase + i);
+                        }
+
+                        if (!lua_pcall(L, argCount, LUA_MULTRET, 0) && lua_gettop(L) > before && !lua_isnil(L, before + 1)) {
+                            modernBase = before + 1;
+                            modernCount = lua_gettop(L) - before;
+                        } else {
+                            lua_settop(L, before);
+                        }
+                    } else {
+                        lua_settop(L, before);
+                    }
                 }
 
-                FrameScript_Execute(script.m_luaRef, node->m_listener, argCount, script.m_tainted, event);
+                if (modern && modernCount > 0) {
+                    lua_checkstack(L, modernCount);
+
+                    for (int32_t i = 0; i < modernCount; i++) {
+                        lua_pushvalue(L, modernBase + i);
+                    }
+
+                    FrameScript_Execute(script.m_luaRef, node->m_listener, modernCount, script.m_tainted, event);
+                } else {
+                    for (int32_t i = 0; i < argCount; i++) {
+                        lua_pushvalue(L, originalBase + i);
+                    }
+
+                    FrameScript_Execute(script.m_luaRef, node->m_listener, argCount, script.m_tainted, event);
+                }
             }
         }
 
         node = next;
+    }
+
+    if (modernCount > 0) {
+        lua_settop(L, modernBase - 1);
     }
 
     event->m_pendingSignalCount--;
