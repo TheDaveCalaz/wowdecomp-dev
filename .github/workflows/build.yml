@@ -42,6 +42,12 @@ jobs:
             $best = $null
             foreach ($s in $symbols) { if ($s.Offset -le $rva) { $best = $s } else { break } }
             if ($best) { Write-Output ("::notice::exe+0x{0:X} = {1}+0x{2:X}" -f $rva, $best.Name, ($rva - $best.Offset)) }
+            $near = ($symbols | Where-Object { [Math]::Abs($_.Offset - $rva) -lt 0x400 } | ForEach-Object { "{0:X} {1}" -f $_.Offset, $_.Name }) -join " | "
+            Write-Output ("::notice::near 0x{0:X}: {1}" -f $rva, $near)
+          }
+          foreach ($want in @('SetOrder', 'NotifyOrderChanged', 'SortAnimations')) {
+            $hits = ($symbols | Where-Object { $_.Name -like "*$want*" } | ForEach-Object { "{0:X} {1}" -f $_.Offset, $_.Name }) -join " | "
+            Write-Output ("::notice::{0}: {1}" -f $want, $hits)
           }
       - uses: actions/upload-artifact@v4
         with:
