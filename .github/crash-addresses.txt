@@ -1,2 +1,0 @@
-exe+0x9BDD6
-exe+0x6BF3C4

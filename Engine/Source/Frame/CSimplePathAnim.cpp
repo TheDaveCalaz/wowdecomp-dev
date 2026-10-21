@@ -86,21 +86,12 @@ int32_t CSimplePathAnim::FindControlPoint(int32_t order) {
         return -1;
     }
 
-    int32_t low = 0;
-    int32_t high = this->m_sortedPoints.Count() - 1;
+    // ModernUI: a plain search; the original's binary search never moved past an empty slot and hung.
+    for (uint32_t i = 0; i < this->m_sortedPoints.Count(); i++) {
+        CSimpleControlPoint* point = this->m_sortedPoints[i];
 
-    while (low <= high) {
-        uint32_t middle = static_cast<uint32_t>(high + low) >> 1;
-        CSimpleControlPoint* point = this->m_sortedPoints[middle];
-
-        if (point) {
-            if (point->m_order < order) {
-                low = middle + 1;
-            } else if (point->m_order > order) {
-                high = middle - 1;
-            } else {
-                return middle;
-            }
+        if (point && point->m_order == order) {
+            return static_cast<int32_t>(i);
         }
     }
 
@@ -139,10 +130,24 @@ void CSimplePathAnim::NotifyOrderChanged(CSimpleControlPoint* point) {
         return;
     }
 
-    int32_t index = this->FindControlPoint(point->m_order);
+    // ModernUI: the original linked the point in front of whichever point the sorted array held for its new
+    // order, which could be the point itself (just unlinked), and the client crashed. The point now goes in
+    // front of the first other point with a higher order, or at the end.
+    this->m_controlPoints.UnlinkNode(point);
 
-    if (index >= 0) {
-        this->m_controlPoints.LinkNode(point, 2, this->m_sortedPoints[index]);
+    CSimpleControlPoint* before = nullptr;
+
+    for (CSimpleControlPoint* other = this->m_controlPoints.Head(); other; other = this->m_controlPoints.Next(other)) {
+        if (other != point && other->m_order > point->m_order) {
+            before = other;
+            break;
+        }
+    }
+
+    if (before) {
+        this->m_controlPoints.LinkNode(point, 2, before);
+    } else {
+        this->m_controlPoints.LinkToTail(point);
     }
 
     this->BuildSpline();
