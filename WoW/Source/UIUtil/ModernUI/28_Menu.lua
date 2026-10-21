@@ -396,6 +396,27 @@ function DropdownButtonMixin:SetupMenu(generator)
 	end
 	self:GenerateMenu()
 end
+-- A tooltip for the dropdown button itself: func(tooltip, button) fills GameTooltip on mouse-over.
+function DropdownButtonMixin:SetTooltip(func)
+	self.tooltipFunc = func
+	if self.modernTooltipHooked then
+		return
+	end
+	self.modernTooltipHooked = true
+	self:HookScript("OnEnter", function(button)
+		if button.tooltipFunc then
+			GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
+			button.tooltipFunc(GameTooltip, button)
+			GameTooltip:Show()
+		end
+	end)
+	self:HookScript("OnLeave", function(button)
+		if button.tooltipFunc and GameTooltip:GetOwner() == button then
+			GameTooltip:Hide()
+		end
+	end)
+end
+
 function DropdownButtonMixin:GenerateMenu()
 	if not self.menuGenerator then
 		return

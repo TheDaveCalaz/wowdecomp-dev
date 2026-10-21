@@ -235,23 +235,12 @@ TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* CSimpleAnimGroup::FindAnimLi
         return nullptr;
     }
 
-    int32_t low = 0;
-    int32_t high = this->m_animLists.Count() - 1;
+    // ModernUI: a plain search. The original's binary search never moved past an empty list and hung.
+    for (uint32_t i = 0; i < this->m_animLists.Count(); i++) {
+        TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[i];
 
-    while (low <= high) {
-        uint32_t middle = static_cast<uint32_t>(high + low) >> 1;
-        TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[middle];
-
-        if (list->Head()) {
-            int32_t listOrder = list->Head()->m_anim->m_order;
-
-            if (listOrder < order) {
-                low = middle + 1;
-            } else if (listOrder > order) {
-                high = middle - 1;
-            } else {
-                return list;
-            }
+        if (list && list->Head() && list->Head()->m_anim->m_order == order) {
+            return list;
         }
     }
 
@@ -704,11 +693,8 @@ void CSimpleAnimGroup::NotifyOrderChanged(CSimpleAnim* anim, int32_t oldOrder) {
         return;
     }
 
-    if (this->RemoveAnimListNode(this->FindAnimList(oldOrder), anim)) {
-        if (this->AddAnimListNode(this->RegisterAnimList(anim->m_order), anim)) {
-            this->ComputeDuration();
-        }
-    }
+    // ModernUI: rebuild the order lists (see SortAnimations) instead of moving one node.
+    this->SortAnimations();
 }
 
 // VERIFY: 249d80ec manual
@@ -746,19 +732,16 @@ void CSimpleAnimGroup::Stop(bool requested) {
 void CSimpleAnimGroup::SortAnimations() {
     this->Stop(false);
 
-    if (!this->m_animations.Head()) {
-        for (uint32_t i = 0; i < this->m_animLists.Count(); i++) {
+    // ModernUI: the lists are rebuilt from nothing. The original reused emptied lists wherever they stood, which
+    // put orders out of sequence, and changing an animation's order (SetOrder) could then crash the client.
+    for (uint32_t i = 0; i < this->m_animLists.Count(); i++) {
+        if (this->m_animLists[i]) {
             this->m_animLists[i]->Clear();
             delete this->m_animLists[i];
         }
-
-        this->m_animLists.Clear();
-        return;
     }
 
-    for (uint32_t i = 0; i < this->m_animLists.Count(); i++) {
-        this->m_animLists[i]->Clear();
-    }
+    this->m_animLists.Clear();
 
     int32_t nextOrder = 0;
 
@@ -776,35 +759,10 @@ void CSimpleAnimGroup::SortAnimations() {
             nextOrder = 0;
         }
 
-        this->AddAnimListNode(this->RegisterAnimList(order), anim);
+        this->AddAnimListNode(this->RegisterAnimList(anim->m_order), anim);
     }
 
-    int32_t count = this->m_animLists.Count();
-    int32_t last = count - 1;
-
-    while (last >= 0 && !this->m_animLists[last]->Head()) {
-        last--;
-    }
-
-    if (last < 0) {
-        return;
-    }
-
-    uint32_t newCount = last + 1;
-
-    if (static_cast<int32_t>(newCount) < count) {
-        for (int32_t i = newCount; i < count; i++) {
-            delete this->m_animLists[i];
-        }
-
-        this->m_animLists.SetCount(newCount);
-
-        if (newCount) {
-            this->m_animLists.ReallocData(newCount);
-        } else {
-            this->m_animLists.Clear();
-        }
-    }
+    this->ComputeDuration();
 }
 
 // VERIFY: bc9ea864 manual
