@@ -560,3 +560,21 @@ local strings = {
 for name, value in pairs(strings) do
 	define(name, value)
 end
+
+-- Class names by class token, for both forms, whatever made the tables first.
+for _, entry in ipairs({ { "LOCALIZED_CLASS_NAMES_MALE", false }, { "LOCALIZED_CLASS_NAMES_FEMALE", true } }) do
+	local list = rawget(_G, entry[1])
+	if type(list) ~= "table" then
+		list = {}
+		_G[entry[1]] = list
+	end
+	if FillLocalizedClassList then
+		local filled = {}
+		pcall(FillLocalizedClassList, filled, entry[2])
+		for token, name in pairs(filled) do
+			if list[token] == nil then
+				list[token] = name
+			end
+		end
+	end
+end

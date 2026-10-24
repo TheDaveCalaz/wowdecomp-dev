@@ -1286,3 +1286,36 @@ end
 
 -- The generated API surface (95_ApiSurface.lua) adds documented methods to these tables.
 _G.ModernUI_WidgetMethodTables = methodTables
+
+-- GetFont: modern clients answer with the font the text is drawn in, including one that comes from its font
+-- object; this client answers nothing then. SetFont also accepts a missing flags argument.
+do
+	for _, kind in ipairs({ "FontString", "EditBox", "SimpleHTML", "MessageFrame", "ScrollingMessageFrame" }) do
+		local index = methodTables[kind]
+		local GetFont = index and rawget(index, "GetFont")
+		local SetFont = index and rawget(index, "SetFont")
+		if GetFont then
+			index.GetFont = function(self, ...)
+				local font, height, flags = GetFont(self, ...)
+				if not font and self.GetFontObject then
+					local object = self:GetFontObject()
+					if object and object.GetFont then
+						font, height, flags = object:GetFont()
+					end
+				end
+				if not font and _G.GameFontNormal then
+					font, height, flags = GameFontNormal:GetFont()
+				end
+				return font, height, flags or ""
+			end
+		end
+		if SetFont then
+			index.SetFont = function(self, font, height, flags, ...)
+				if not font then
+					font = (index.GetFont(self))
+				end
+				return SetFont(self, font, height or 12, flags or "", ...)
+			end
+		end
+	end
+end
