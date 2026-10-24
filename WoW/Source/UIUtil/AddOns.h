@@ -27,7 +27,8 @@ struct UIADDON : public TSHashObject<UIADDON, HASHKEY_STRI> {
     /* 002B */ bool m_enabledByDefault;
     /* 002C */ bool m_loadOnDemand;
     /* 002D */ bool m_checkingLoadable;
-    /* 002E */ uint8_t unused_002E[2];
+    /* 002E */ bool m_classicInterface;     // not in the original: the .toc lists a Classic client (1.x to 5.x)
+    /* 002F */ uint8_t unused_002F;
     /* 0030 */ char* m_url;
     /* 0034 */ uint32_t m_numFiles;
     /* 0038 */ TSGrowableArray<char*> m_optionalDeps;

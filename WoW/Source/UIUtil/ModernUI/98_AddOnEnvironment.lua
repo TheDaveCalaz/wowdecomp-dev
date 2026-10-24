@@ -11,6 +11,20 @@ local select, type, tonumber, match = select, type, tonumber, string.match
 
 local modern = setmetatable({}, { __index = _G })
 _G.ModernUI_AddOnEnvironment = setmetatable({}, { __index = modern, __newindex = _G })
+
+-- AddOns written for Classic clients as well (their .toc lists Wrath, Cata... Classic) run here instead: the same,
+-- except that the systems only retail clients have (13_RetailOnlyNamespaces.lua) are absent, as on a Classic
+-- client. Such code checks for them ("if C_Garrison then") and takes its Classic path.
+local retailOnly = _G.ModernUI_RetailOnlyNamespaces or {}
+_G.ModernUI_ClassicAddOnEnvironment = setmetatable({}, {
+	__index = function(_, key)
+		if retailOnly[key] then
+			return nil
+		end
+		return modern[key]
+	end,
+	__newindex = _G,
+})
 _G.ModernUI_ModernAPI = modern -- the modern-shape functions, for code that wants them explicitly
 
 -- The spell ID of a spell known by name, where the client can tell (spells in the player's spellbook).

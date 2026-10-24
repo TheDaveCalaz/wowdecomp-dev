@@ -254,6 +254,18 @@ end)
 add(frameTypes, "CreateLine", function(self, name, layer, template, subLevel)
 	return self:CreateTexture(name, layer, template)
 end)
+-- Access checks of the modern client's secret values: nothing here is restricted, so every object can be used.
+local trueFn = function() return true end
+add(frameTypes, "CanBeAccessedInContext", trueFn)
+add(regionTypes, "CanBeAccessedInContext", trueFn)
+add(animTypes, "CanBeAccessedInContext", trueFn)
+add(frameTypes, "IsObjectLoaded", trueFn)
+add(regionTypes, "IsObjectLoaded", trueFn)
+add(frameTypes, "CanChangeProtectedState", function() return not InCombatLockdown() end)
+add(regionTypes, "CanChangeProtectedState", function() return not InCombatLockdown() end)
+add(frameTypes, "IsRectValid", function(self) return self:GetLeft() ~= nil end)
+add(regionTypes, "IsRectValid", function(self) return self:GetLeft() ~= nil end)
+addTo("Font", "CanBeAccessedInContext", trueFn)
 add(frameTypes, "SetForbidden", noop)
 add(frameTypes, "IsForbidden", falseFn)
 add(frameTypes, "GetRaisedFrameLevel", function(self) return self:GetFrameLevel() end)
@@ -647,6 +659,9 @@ _G.CreateFrame = function(frameType, name, parent, template, id)
 		frame:SetUndefinedEventsAllowed(true)
 		frame:HookScript("OnShow", function(self) self:TriggerEvent("OnShow") end)
 		frame:HookScript("OnHide", function(self) self:TriggerEvent("OnHide") end)
+	end
+	if frame and frameType == "ModelScene" and ModernUI_DecorateModelScene then
+		ModernUI_DecorateModelScene(frame)
 	end
 	if mixins and frame then
 		for _, mixinName in ipairs(mixins) do

@@ -211,3 +211,18 @@ _G.ModernUI_PortraitContainer = function(portrait)
 	function container:GetFrameLevel() return 1 end
 	return container
 end
+
+-- GetTotemInfo(slot) for a slot this client has no totem slot for (modern clients have more, and code loops over
+-- MAX_TOTEMS) answers as an empty slot instead of failing.
+do
+	local GetTotemInfo_335 = _G.GetTotemInfo
+	if GetTotemInfo_335 then
+		_G.GetTotemInfo = function(slot)
+			slot = tonumber(slot)
+			if not slot or slot < 1 or slot > 4 then
+				return false, "", 0, 0, ""
+			end
+			return GetTotemInfo_335(slot)
+		end
+	end
+end

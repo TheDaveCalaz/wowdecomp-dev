@@ -410,6 +410,18 @@ define("canaccessvalue", function() return true end)
 define("canaccessallvalues", function() return true end)
 define("issecrettable", function() return false end)
 define("canaccesstable", function() return true end)
+-- The rest of the secret-value helpers: nothing here is ever secret, so values pass through unchanged.
+define("canaccesssecrets", function() return true end)
+define("hasanysecretvalues", function() return false end)
+define("secretwrap", function(...) return ... end)
+define("secretunwrap", function(...) return ... end)
+define("scrubsecretvalues", function(...) return ... end)
+define("dropsecretaccess", function() end)
+define("mapvalues", function(fn, ...)
+	local out = { ... }
+	for i = 1, select("#", ...) do out[i] = fn(out[i]) end
+	return unpack(out, 1, select("#", ...))
+end)
 
 -- Old names that later clients renamed, so code written for either works.
 define("GetAddOnEnableState", function(character, name)

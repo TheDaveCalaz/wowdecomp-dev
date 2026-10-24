@@ -103,6 +103,32 @@ static uint32_t ParseInterfaceVersions(const char* p) {
     return best;
 }
 
+// Whether an Interface line lists a Classic client newer than this one (1.13 to 5.x: Classic Era, TBC, Wrath,
+// Cata or Mists Classic). Such an AddOn is written to run where retail-only systems are absent.
+static bool ListsClassicVersion(const char* p) {
+    while (*p) {
+        while (*p == ' ' || *p == ',' || *p == '\t') {
+            p++;
+        }
+
+        if (!*p) {
+            break;
+        }
+
+        uint32_t value = SStrToUnsigned(p);
+
+        if (value > 30300 && value < 100000) {
+            return true;
+        }
+
+        while (*p && *p != ',') {
+            p++;
+        }
+    }
+
+    return false;
+}
+
 // Whether an Interface line lists any client newer than this one (the AddOn is written for a modern client).
 static bool ListsModernVersion(const char* p) {
     while (*p) {
@@ -1213,8 +1239,12 @@ bool LoadAddOn(const char* name, bool demandLoad, CStatus* status) {
         lua_State* L = FrameScript_GetContext();
         lua_createtable(L, 0, 0);
         // ModernUI: AddOns written for clients newer than this one see the modern shapes of changed functions.
+        // Of those, AddOns that also run on Classic clients see the Classic API: retail-only systems are absent,
+        // as their code expects when it checks for them.
         bool previousEnvironment = FrameScript_SetModernAddOnEnvironment(addon->m_modernInterface);
+        bool previousClassic = FrameScript_SetClassicAddOnEnvironment(addon->m_classicInterface);
         FrameXML_CreateFrames(path, addonName, &md5, &addonStatus);
+        FrameScript_SetClassicAddOnEnvironment(previousClassic);
         FrameScript_SetModernAddOnEnvironment(previousEnvironment);
         lua_settop(L, -2);
 
@@ -1362,6 +1392,7 @@ static void LoadAddOnInfo(const char* name) {
                 if (!addon->m_flavourInterface) {
                     addon->m_interfaceVersion = ParseInterfaceVersions(p);
                     addon->m_modernInterface = ListsModernVersion(p);
+                    addon->m_classicInterface = ListsClassicVersion(p);
                 }
             } else if (!SStrCmpI(p, "Interface-", SStrLen("Interface-"))) {
                 // "## Interface-Wrath: 38002": a version for one flavour, which wins over the plain line
@@ -1382,6 +1413,7 @@ static void LoadAddOnInfo(const char* name) {
                 if (IsOurFlavour(flavour)) {
                     addon->m_interfaceVersion = ParseInterfaceVersions(f);
                     addon->m_modernInterface = ListsModernVersion(f);
+                    addon->m_classicInterface = true;
                     addon->m_flavourInterface = true;
                 }
             } else if (!SStrCmpI(p, "Title", 5) || !SStrCmpI(p, "Notes", 5) || !SStrCmpI(p, "Author", 6) || !SStrCmpI(p, "Version", 7) || !SStrCmpI(p, "X-", 2)) {

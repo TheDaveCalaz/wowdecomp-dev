@@ -56,6 +56,22 @@ local function set(name, fn)
 end
 
 set("GetAuraDataByIndex", function(unit, index, filter) return auraData(unit, index, filter or "HELPFUL") end)
+-- Every aura of a unit that matches the filter, in order (C_UnitAuras.GetUnitAuras(unit, filter, maxCount)).
+set("GetUnitAuras", function(unit, filter, maxCount)
+	local out = {}
+	filter = filter or "HELPFUL"
+	for i = 1, 255 do
+		if maxCount and #out >= maxCount then
+			break
+		end
+		local data = auraData(unit, i, filter)
+		if not data then
+			break
+		end
+		out[#out + 1] = data
+	end
+	return out
+end)
 set("GetBuffDataByIndex", function(unit, index, filter) return auraData(unit, index, "HELPFUL" .. (filter and ("|" .. filter) or "")) end)
 set("GetDebuffDataByIndex", function(unit, index, filter) return auraData(unit, index, "HARMFUL" .. (filter and ("|" .. filter) or "")) end)
 set("GetAuraDataBySpellName", function(unit, spellName, filter)

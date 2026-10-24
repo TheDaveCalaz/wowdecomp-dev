@@ -308,7 +308,10 @@ local signal = ModernUI_SignalEvent
 -- Frames made by the code of modern AddOns at any time are theirs too.
 do
 	local createFrame = CreateFrame
-	local environment = _G.ModernUI_AddOnEnvironment
+	-- The AddOn environments are made later (98_AddOnEnvironment.lua), so they are looked up when needed.
+	local function isAddOnEnvironment(env)
+		return env ~= nil and (env == rawget(_G, "ModernUI_AddOnEnvironment") or env == rawget(_G, "ModernUI_ClassicAddOnEnvironment"))
+	end
 	-- The parts of this client's templates are named "$parentText", "$parentLow"...; modern templates also
 	-- give them keys (frame.Text, frame.Low...), which modern code uses.
 	local function keyParts(frame)
@@ -321,7 +324,7 @@ do
 			local partName = part.GetName and part:GetName()
 			if partName and #partName > length and partName:sub(1, length) == name then
 				local suffix = partName:sub(length + 1)
-				if suffix:find("^[A-Z]%w*$") and rawget(frame, suffix) == nil then
+				if suffix:find("^[A-Z]%w*$") and rawget(frame, suffix) == nil and frame[suffix] == nil then
 					frame[suffix] = part
 				end
 			end
@@ -329,9 +332,27 @@ do
 		for _, region in ipairs({ frame:GetRegions() }) do key(region) end
 		for _, child in ipairs({ frame:GetChildren() }) do key(child) end
 	end
+	-- The interface's own frames (made from XML before any AddOn) get the same keys: ChatFrame1Tab.Text and
+	-- the like. Blizzard's load-on-demand parts are keyed when they load.
+	_G.ModernUI_KeyFrameParts = keyParts
+	local function keyAll()
+		local frame = EnumerateFrames()
+		while frame do
+			pcall(keyParts, frame)
+			frame = EnumerateFrames(frame)
+		end
+	end
+	keyAll()
+	local keyer = createFrame("Frame")
+	keyer:RegisterEvent("ADDON_LOADED")
+	keyer:SetScript("OnEvent", function(_, _, addon)
+		if type(addon) == "string" and addon:find("^Blizzard_") then
+			keyAll()
+		end
+	end)
 	CreateFrame = function(frameType, name, parent, template, ...)
 		local frame = createFrame(frameType, name, parent, template, ...)
-		if frame and environment and getfenv(2) == environment then
+		if frame and isAddOnEnvironment(getfenv(2)) then
 			ModernUI_SetObjectModern(frame, true)
 		end
 		if frame and template then

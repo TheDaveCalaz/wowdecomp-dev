@@ -50,6 +50,9 @@ void FrameScript_Execute(int32_t function, FrameScript_Object* object, int32_t a
 // Not in the original: while enabled, Lua files run in ModernUI_AddOnEnvironment (AddOns for modern clients).
 bool FrameScript_SetModernAddOnEnvironment(bool enabled); // returns the previous setting
 bool FrameScript_IsModernAddOnEnvironment();
+// Not in the original: modern AddOns that also run on Classic clients use ModernUI_ClassicAddOnEnvironment, which
+// leaves out the systems only retail clients have.
+bool FrameScript_SetClassicAddOnEnvironment(bool enabled); // returns the previous setting
 // Not in the original: objects of modern AddOns get event arguments in the modern layout.
 void FrameScript_SetObjectModern(const FrameScript_Object* object, bool modern);
 bool FrameScript_IsObjectModern(const FrameScript_Object* object);

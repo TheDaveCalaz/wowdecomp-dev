@@ -1648,6 +1648,28 @@ void CGCamera::EnableFreeLook() {
     this->SetModeFreeLook();
 }
 
+// ModernUI: the over-the-shoulder camera of later clients (CVar test_cameraOverShoulder, in yards; positive
+// moves the camera to the character's right, so the character sits left of centre). AddOns such as Narcissus
+// frame the character with it. The whole view moves sideways: the camera and the point it looks at shift alike
+// (CGCamera::Update aims the camera at its target, shifted the same way).
+static C3Vector ModernUI_ShoulderShift(CGCamera* camera, float distance) {
+    static CVar* s_overShoulder = nullptr;
+
+    if (!s_overShoulder) {
+        s_overShoulder = CVar::Lookup("test_cameraOverShoulder");
+    }
+
+    if (!s_overShoulder || distance <= 0.0f || fabsf(s_overShoulder->m_floatValue) <= 0.001f) {
+        return C3Vector(0.0f, 0.0f, 0.0f);
+    }
+
+    // The second row of the camera's basis points to the camera's left.
+    C3Vector left = camera->Right();
+    float shift = s_overShoulder->m_floatValue;
+    shift = shift < -5.0f ? -5.0f : (shift > 5.0f ? 5.0f : shift);
+    return C3Vector(-left.x * shift, -left.y * shift, -left.z * shift);
+}
+
 // VERIFY: 83cdf005 manual
 // OFFSET: 0x00601D60
 C3Vector CGCamera::GetCameraPosition(const C3Vector& target, float distance, const C3Vector& offset) {
@@ -1676,24 +1698,11 @@ C3Vector CGCamera::GetCameraPosition(const C3Vector& target, float distance, con
     position.y = offset.y + position.y;
     position.z = offset.z + position.z;
 
-    // ModernUI: the over-the-shoulder camera of later clients (CVar test_cameraOverShoulder, in yards; positive
-    // moves the camera to the character's right, so the character sits left of centre). AddOns such as Narcissus
-    // frame the character with it.
-    static CVar* s_overShoulder = nullptr;
-
-    if (!s_overShoulder) {
-        s_overShoulder = CVar::Lookup("test_cameraOverShoulder");
-    }
-
-    if (s_overShoulder && distance > 0.0f && fabsf(s_overShoulder->m_floatValue) > 0.001f) {
-        // The second row of the camera's basis points to the camera's left.
-        C3Vector left = this->Right();
-        float shift = s_overShoulder->m_floatValue;
-        shift = shift < -5.0f ? -5.0f : (shift > 5.0f ? 5.0f : shift);
-        position.x -= left.x * shift;
-        position.y -= left.y * shift;
-        position.z -= left.z * shift;
-    }
+    // ModernUI: the over-the-shoulder camera of later clients (see ModernUI_ShoulderShift).
+    C3Vector shift = ModernUI_ShoulderShift(this, distance);
+    position.x += shift.x;
+    position.y += shift.y;
+    position.z += shift.z;
 
     return position;
 }
@@ -2530,7 +2539,9 @@ void CGCamera::CalcTargetCamera(CGObject_C* target, uint32_t time) {
     this->m_position = this->BumpCameraPositionFromLiquid(cameraTarget, distance, this->m_position);
 
     if (!this->m_relativeTo && !s_cameraWaterCollision->m_intValue && 0.0f == this->m_vehicleYawOffset && (!unit || !unit->GetCanFly())) {
-        C3Vector forward = C3Vector(cameraTarget.x - this->m_position.x, cameraTarget.y - this->m_position.y, cameraTarget.z - this->m_position.z);
+        // ModernUI: aimed at the target shifted as the camera is (over-the-shoulder view).
+        C3Vector shift = ModernUI_ShoulderShift(this, distance);
+        C3Vector forward = C3Vector(cameraTarget.x + shift.x - this->m_position.x, cameraTarget.y + shift.y - this->m_position.y, cameraTarget.z + shift.z - this->m_position.z);
 
         if (forward.x * forward.x + forward.y * forward.y + forward.z * forward.z > 0.1f) {
             forward.Normalize();

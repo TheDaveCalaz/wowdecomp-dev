@@ -888,6 +888,14 @@ int32_t FrameScript_AddEvent(const char* name) {
     return static_cast<int32_t>(count);
 }
 
+static bool s_classicAddOnEnvironment = false;
+
+bool FrameScript_SetClassicAddOnEnvironment(bool enabled) {
+    bool previous = s_classicAddOnEnvironment;
+    s_classicAddOnEnvironment = enabled;
+    return previous;
+}
+
 bool FrameScript_SetModernAddOnEnvironment(bool enabled) {
     bool previous = s_modernUIAddOnEnvironment;
     s_modernUIAddOnEnvironment = enabled;
@@ -915,7 +923,12 @@ int32_t FrameScript_ExecuteBuffer(const char* buffer, size_t bytes, const char* 
     // ModernUI: Lua files of AddOns written for modern clients run in the modern API environment, where the
     // functions whose returns changed shape since 3.3.5 answer in the modern shape.
     if (s_modernUIAddOnEnvironment) {
-        lua_getfield(L, LUA_GLOBALSINDEX, "ModernUI_AddOnEnvironment");
+        lua_getfield(L, LUA_GLOBALSINDEX, s_classicAddOnEnvironment ? "ModernUI_ClassicAddOnEnvironment" : "ModernUI_AddOnEnvironment");
+
+        if (!lua_istable(L, -1)) {
+            lua_pop(L, 1);
+            lua_getfield(L, LUA_GLOBALSINDEX, "ModernUI_AddOnEnvironment");
+        }
 
         if (lua_istable(L, -1)) {
             lua_setfenv(L, -2);
