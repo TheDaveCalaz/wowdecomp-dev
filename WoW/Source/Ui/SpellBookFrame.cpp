@@ -1436,6 +1436,41 @@ int32_t GetSpellIdByName(const char* name, int32_t* petSpell) {
 bool GetSlotFromLua(lua_State* L, uint32_t* slot, int32_t* petSpell, int32_t* type, int32_t allowName) {
     *petSpell = 0;
 
+    // Not in the original: a spell ID on its own, as Wrath Classic and modern clients take it
+    // (GetSpellTexture(133), IsSpellInRange(133, "target")). This client read it as a spell named "133" and
+    // failed with "Invalid spell slot". The ID is looked up in the spellbook, then the pet's; a spell the player
+    // does not have answers with nothing, without an error.
+    if (allowName && lua_type(L, 1) == LUA_TNUMBER) {
+        bool bookGiven = false;
+
+        if (lua_type(L, 2) == LUA_TSTRING) {
+            const char* book = lua_tolstring(L, 2, nullptr);
+            bookGiven = !SStrCmpI(book, "spell", STORM_MAX_STR) || !SStrCmpI(book, "pet", STORM_MAX_STR);
+        }
+
+        if (!bookGiven) {
+            int32_t spellId = static_cast<int32_t>(lua_tonumber(L, 1));
+            int32_t found = GetSpellSlot(spellId, 0);
+
+            if (found < 0) {
+                found = GetSpellSlot(spellId, 1);
+                *petSpell = found >= 0 ? 1 : 0;
+            }
+
+            if (found < 0) {
+                return false;
+            }
+
+            *slot = static_cast<uint32_t>(found);
+
+            if (type) {
+                *type = 2;
+            }
+
+            return true;
+        }
+    }
+
     if (lua_isnumber(L, 1) && lua_isstring(L, 2)) {
         *slot = static_cast<uint32_t>(lua_tonumber(L, 1) - 1.0);
 
@@ -1504,6 +1539,18 @@ const char* CGSpellBook::GetSpellTexture(int32_t slot, int32_t petSpell) {
     }
 
     return icon->m_textureFilename;
+}
+
+// Not in the original: a spell's icon by its ID, for spells the player does not have (GetSpellTexture(id)).
+const char* SpellBook_GetSpellTextureByID(int32_t spellId) {
+    SpellRec spell;
+
+    if (!spellId || !g_spellDB.GetRecord(spellId, &spell)) {
+        return nullptr;
+    }
+
+    SpellIconRec* icon = g_spellIconDB.GetRecord(spell.m_spellIconID);
+    return icon ? icon->m_textureFilename : nullptr;
 }
 
 // VERIFY: aa6df244 manual

@@ -403,11 +403,22 @@ static int32_t Script_IsSpellKnown(lua_State* L) {
 
 // VERIFY: 9bf51350 auto
 // OFFSET: 0x00540D70
+const char* SpellBook_GetSpellTextureByID(int32_t spellId);
+
 static int32_t Script_GetSpellTexture(lua_State* L) {
     uint32_t slot = 0;
     int32_t petSpell;
 
     if (!GetSlotFromLua(L, &slot, &petSpell, nullptr, 1)) {
+        // Not in the original: GetSpellTexture(spellID) for a spell the player does not have, as modern clients
+        // answer it (from the spell's own icon).
+        const char* texture = lua_type(L, 1) == LUA_TNUMBER ? SpellBook_GetSpellTextureByID(static_cast<int32_t>(lua_tonumber(L, 1))) : nullptr;
+
+        if (texture && *texture) {
+            lua_pushstring(L, texture);
+            return 1;
+        }
+
         return 0;
     }
 

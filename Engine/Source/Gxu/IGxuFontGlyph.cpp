@@ -10,11 +10,14 @@
 static int32_t FREETYPE_RenderGlyph(FT_Face face, uint32_t code, bool monochrome) {
     FT_UInt index = FT_Get_Char_Index(face, code);
 
-    if (!index || FT_Load_Glyph(face, index, monochrome ? FT_LOAD_LINEAR_DESIGN | FT_LOAD_PEDANTIC | FT_LOAD_CROP_BITMAP | FT_LOAD_NO_HINTING : FT_LOAD_LINEAR_DESIGN | FT_LOAD_PEDANTIC | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING)) {
+    // The original also passed FT_LOAD_PEDANTIC; current FreeType is stricter with it and refuses glyphs of
+    // slightly malformed fonts that the original drew, so it is left out.
+    if (!index || FT_Load_Glyph(face, index, monochrome ? FT_LOAD_LINEAR_DESIGN | FT_LOAD_CROP_BITMAP | FT_LOAD_NO_HINTING : FT_LOAD_LINEAR_DESIGN | FT_LOAD_NO_BITMAP | FT_LOAD_NO_HINTING)) {
         return 0;
     }
 
-    return FT_Render_Glyph(face->glyph, static_cast<FT_Render_Mode>(monochrome)) == 0;
+    // FreeType 2.0 numbered monochrome rendering 1; it is FT_RENDER_MODE_MONO now (1 is FT_RENDER_MODE_LIGHT).
+    return FT_Render_Glyph(face->glyph, monochrome ? FT_RENDER_MODE_MONO : FT_RENDER_MODE_NORMAL) == 0;
 }
 
 // VERIFY: d81e8b25 manual

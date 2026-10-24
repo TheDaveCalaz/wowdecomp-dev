@@ -1720,7 +1720,8 @@ static int32_t Script_GetBackdrop(lua_State* L) {
 static int32_t Script_SetBackdrop(lua_State* L) {
     CSimpleFrame* frame = static_cast<CSimpleFrame*>(FrameScript_GetObjectThis(L, CSimpleFrame::GetObjectType()));
 
-    if (lua_type(L, 2) == LUA_TNIL) {
+    // SetBackdrop() with no argument clears it too (modern clients and BackdropTemplate code call it so).
+    if (lua_type(L, 2) == LUA_TNIL || lua_type(L, 2) == LUA_TNONE) {
         frame->SetBackdrop(nullptr);
         return 0;
     }

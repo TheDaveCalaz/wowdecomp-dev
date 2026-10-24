@@ -4,7 +4,7 @@
 #include <cstring>
 #include <malloc.h>
 #include <typeinfo>
-#include <freetype/ftmodule.h>
+#include <freetype/ftmodapi.h>
 #include "Engine/Source/Gxu/GxuFont.h"
 #include "Engine/Source/Base/ConvertUTF.h"
 #include "Engine/Source/Gx/CGxBuf.h"

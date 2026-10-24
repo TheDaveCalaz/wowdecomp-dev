@@ -397,6 +397,25 @@ addTo("FontString", "CanNonSpaceWrap", falseFn)
 -- Modern fonts hold a font per alphabet; this client has one font for all, so every alphabet answers with the
 -- font object itself.
 addTo("Font", "GetFontObjectForAlphabet", function(self) return self end)
+-- CreateFontFamily(name, members): a font object for several alphabets; this client keeps one font, taken
+-- from the Latin ("roman") member, else the first.
+if _G.CreateFontFamily == nil and _G.CreateFont then
+	_G.CreateFontFamily = function(name, members)
+		local font = (name and _G[name]) or CreateFont(name)
+		local chosen
+		for _, member in ipairs(members or {}) do
+			if member.alphabet == "roman" then
+				chosen = member
+				break
+			end
+			chosen = chosen or member
+		end
+		if chosen and chosen.file then
+			pcall(font.SetFont, font, chosen.file, chosen.height or 12, chosen.flags or "")
+		end
+		return font
+	end
+end
 addTo("Font", "SetFontObjectsToTry", function(self, font) if font and font.GetFont then self:SetFontObject(font) end end)
 addTo("FontString", "SetFontObjectsToTry", function(self, font) if font then self:SetFontObject(font) end end)
 addTo("FontString", "SetResizeToFitBounds", noop)

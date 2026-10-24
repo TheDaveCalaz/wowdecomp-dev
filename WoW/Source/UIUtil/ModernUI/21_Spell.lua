@@ -290,6 +290,17 @@ bset("GetSkillLineIndexByID", function() return nil end)
 bset("ContainsAnyDisenchantSpell", function() return IsSpellKnown(13262) end)
 bset("GetCurrentLevelSpells", function() return {} end)
 
+-- The Wrath Classic globals for spellbook entries (GetSpellName and friends under their newer names).
+local function wrathBook(book)
+	return (book == 1 or book == "pet" or book == BOOKTYPE_PET) and (BOOKTYPE_PET or "pet") or (BOOKTYPE_SPELL or "spell")
+end
+if _G.GetSpellBookItemName == nil then
+	_G.GetSpellBookItemName = function(index, book) return GetSpellName(index, wrathBook(book)) end
+end
+if _G.GetSpellBookItemTexture == nil then
+	_G.GetSpellBookItemTexture = function(index, book) return GetSpellTexture(index, wrathBook(book)) end
+end
+
 -- GetSpellBookItemInfo(index, bookType) as on Wrath Classic: the entry's type and spell ID (two values; the
 -- retail table form is C_SpellBook.GetSpellBookItemInfo).
 if _G.GetSpellBookItemInfo == nil then

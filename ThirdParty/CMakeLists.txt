@@ -66,15 +66,24 @@ if (WIN32)
     endif ()
 endif ()
 
+# FreeType 2.13.3 (the original client used FreeType 2.0, which cannot open OpenType/CFF fonts that modern
+# AddOns ship). Only the modules listed in include/freetype/config/ftmodule.h are built.
 add_library(freetype STATIC
-    freetype/src/base/ftsystem.c
-    freetype/src/base/ftinit.c
-    freetype/src/base/ftdebug.c
+    freetype/src/autofit/autofit.c
     freetype/src/base/ftbase.c
-    freetype/src/autohint/autohint.c
+    freetype/src/base/ftbbox.c
+    freetype/src/base/ftbitmap.c
+    freetype/src/base/ftdebug.c
+    freetype/src/base/ftglyph.c
+    freetype/src/base/ftinit.c
+    freetype/src/base/ftmm.c
+    freetype/src/base/ftsynth.c
+    freetype/src/base/ftsystem.c
     freetype/src/cff/cff.c
     freetype/src/cid/type1cid.c
+    freetype/src/gzip/ftgzip.c
     freetype/src/psaux/psaux.c
+    freetype/src/pshinter/pshinter.c
     freetype/src/psnames/psnames.c
     freetype/src/raster/raster.c
     freetype/src/sfnt/sfnt.c
@@ -82,6 +91,11 @@ add_library(freetype STATIC
     freetype/src/truetype/truetype.c
     freetype/src/type1/type1.c
     freetype/src/winfonts/winfnt.c
+)
+
+target_compile_definitions(freetype
+    PRIVATE
+        FT2_BUILD_LIBRARY
 )
 
 target_include_directories(freetype
