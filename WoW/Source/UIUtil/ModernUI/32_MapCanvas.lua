@@ -1540,7 +1540,15 @@ function map:RemoveDataProviderEvent(event)
 end
 
 -- The displayed map, in modern IDs, follows the client's map.
+-- The whole-world views have no map area of their own here: the Azeroth view (continent 0) is modern map 947,
+-- the cosmic view (continent -1) 946.
 local function currentMapID()
+	local continent = GetCurrentMapContinent and GetCurrentMapContinent()
+	if continent == 0 then
+		return 947
+	elseif continent == -1 then
+		return 946
+	end
 	local legacy = GetCurrentMapAreaID and GetCurrentMapAreaID()
 	return legacy and ModernUI_GetUIMapIDFromAreaID and ModernUI_GetUIMapIDFromAreaID(legacy) or nil
 end
@@ -1552,6 +1560,11 @@ local function syncMap()
 	end
 end
 function map:SetMapID(mapID)
+	if mapID == 947 or mapID == 946 then
+		SetMapZoom(mapID == 947 and 0 or -1)
+		syncMap()
+		return
+	end
 	local legacy = ModernUI_GetAreaIDFromUIMapID and ModernUI_GetAreaIDFromUIMapID(mapID)
 	if legacy then
 		SetMapByID(legacy - 1)

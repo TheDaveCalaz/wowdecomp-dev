@@ -1319,3 +1319,44 @@ do
 		end
 	end
 end
+
+-- SimpleHTML:GetContentHeight: the height its text needs at its current width, measured with a hidden font
+-- string (modern code sizes the frame to it; this client has no such query, so the frame ended up 0 high).
+do
+	local index = methodTables.SimpleHTML
+	if index then
+		local measure
+		local texts = setmetatable({}, { __mode = "k" })
+		local SetText = index.SetText
+		index.SetText = function(self, text, ...)
+			texts[self] = text
+			return SetText(self, text, ...)
+		end
+		index.GetContentHeight = function(self)
+			local text = texts[self]
+			if not text or text == "" then
+				return 0
+			end
+			if not measure then
+				measure = UIParent:CreateFontString(nil, "BACKGROUND", "GameFontNormal")
+				measure:Hide()
+			end
+			local plain = tostring(text):gsub("<[Bb][Rr]%s*/?>", "\n"):gsub("</[Pp]>", "\n"):gsub("<[^>]+>", "")
+			plain = plain:gsub("&lt;", "<"):gsub("&gt;", ">"):gsub("&amp;", "&"):gsub("\n+$", "")
+			local font, size, flags = self:GetFont()
+			if font then
+				measure:SetFont(font, size or 12, flags or "")
+			end
+			local width = self:GetWidth() or 0
+			measure:SetWidth(width > 0 and width or 300)
+			measure:SetText(plain)
+			return measure:GetStringHeight() or 0
+		end
+		index.GetContentWidth = function(self)
+			if not measure then
+				return self:GetWidth() or 0
+			end
+			return math.min(measure:GetStringWidth() or 0, self:GetWidth() or 0)
+		end
+	end
+end
