@@ -150,7 +150,7 @@ C_NamePlate.GetNamePlates = function()
 end
 
 -- The frame modern AddOns adjust nameplate behaviour through.
-if _G.NamePlateDriverFrame == nil then
+if rawget(_G, "NamePlateDriverFrame") == nil then
 	local driver = CreateFrame("Frame", "NamePlateDriverFrame", UIParent)
 	driver:Hide()
 	driver.namePlateSetInsetFunctions = { friendly = function() end, enemy = function() end, player = function() end }

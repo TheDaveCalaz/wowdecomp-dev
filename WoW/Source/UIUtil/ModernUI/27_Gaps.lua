@@ -32,8 +32,12 @@ do
 		if type(a) ~= "table" then
 			return
 		end
-		if a[b] == nil then
-			a[b] = noop
+		-- A method of a hidden stand-in for a modern Blizzard frame (36_FrameAliases.lua) answers with a
+		-- stand-in part rather than a function (ActionBarButtonEventsFrame.RegisterFrame); it becomes one.
+		local target = a[b]
+		local isStandIn = _G.ModernUI_IsStandInFrame
+		if target == nil or (type(target) == "table" and isStandIn and (isStandIn(target) or isStandIn(a))) then
+			rawset(a, b, noop)
 		end
 		return hooksecurefunc_335(a, b, c)
 	end

@@ -5,6 +5,19 @@
 
 if _G.SecureAuraHeader_Update then return end
 
+-- File-level helpers that Blizzard's SecureGroupHeaders.lua declares above the group headers; the aura
+-- header shares them, so they come across with it.
+local tokenTable, sortingTable, groupingTable = {}, {}, {};
+
+local function setAttributesWithoutResponse(self, ...)
+	local oldIgnore = self:GetAttribute("_ignore");
+	self:SetAttribute("_ignore", "attributeChanges");
+	for i = 1, select("#", ...), 2 do
+		self:SetAttribute(select(i, ...));
+	end
+	self:SetAttribute("_ignore", oldIgnore);
+end
+
 local function SetupAuraButtonConfiguration( header, newChild, defaultConfigFunction )
 	local configCode = newChild:GetAttribute("initialConfigFunction") or header:GetAttribute("initialConfigFunction") or defaultConfigFunction;
 

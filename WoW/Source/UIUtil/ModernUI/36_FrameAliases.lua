@@ -49,11 +49,14 @@ end
 -- it up: a hidden frame of the same type, so AddOns that hide, reparent, unregister or skin it carry on. Parts
 -- of it that code reaches for by name (StatusTrackingBarManager.MainStatusTrackingBarContainer) are hidden
 -- frames too, and calling one does nothing. Each is noted once in Logs\LuaErrors.log.
+-- Those parts have no parts of their own: code that walks every part it finds (ElvUI's StripTextures looks
+-- for Inset, NineSlice, Border, ... and strips each in turn) would otherwise never reach the end, and the
+-- endless frames froze loading at the character screen.
 local log = _G.ModernUI_Log or function() end
 local CreateFrame = CreateFrame
 local standIns = setmetatable({}, { __mode = "k" })
 
-local function standIn(kind, name, parent)
+local function standIn(kind, name, parent, isPart)
 	local ok, frame = pcall(CreateFrame, kind, name, parent or UIParent, kind == "GameTooltip" and "GameTooltipTemplate" or nil)
 	if not ok or not frame then
 		ok, frame = pcall(CreateFrame, "Frame", name, parent or UIParent)
@@ -70,8 +73,8 @@ local function standIn(kind, name, parent)
 			if method ~= nil then
 				return method
 			end
-			if type(key) == "string" and key:find("^%u") then
-				local part = standIn("Frame", nil, t)
+			if not isPart and type(key) == "string" and key:find("^%u") then
+				local part = standIn("Frame", nil, t, true)
 				rawset(t, key, part)
 				return part
 			end
@@ -82,6 +85,9 @@ local function standIn(kind, name, parent)
 	return frame
 end
 _G.ModernUI_MakeStandInFrame = standIn
+_G.ModernUI_IsStandInFrame = function(frame)
+	return standIns[frame] == true
+end
 
 if rawget(_G, "ScriptErrorsFrame") == nil then
 	rawset(_G, "ScriptErrorsFrame", standIn("Frame", "ScriptErrorsFrame"))
