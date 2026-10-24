@@ -13,8 +13,16 @@ do
 	CreateFrame = function(frameType, name, parent, ...)
 		local frame = createFrame(frameType, name, parent, ...)
 		if frame and name == nil and (parent == nil or parent == UIParent) then
-			local stack = debugstack(2, 1, 0) or ""
-			sources[frame] = stack:match("([^\n]-:%d+):") or stack:match("^[^\n]*")
+			-- The first caller outside the client's own Lua (CreateFrame is wrapped by later ModernUI files too).
+			local stack = debugstack(2, 12, 0) or ""
+			local where
+			for line in stack:gmatch("[^\n]+") do
+				if not line:find("ModernUI", 1, true) then
+					where = line:match("^(.-:%d+):") or line
+					break
+				end
+			end
+			sources[frame] = where or stack:match("([^\n]-:%d+):") or stack:match("^[^\n]*")
 		end
 		return frame
 	end

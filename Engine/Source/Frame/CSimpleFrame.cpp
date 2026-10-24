@@ -659,17 +659,28 @@ void CSimpleFrame::LoadXML_Layers(XMLNode* node, CStatus* status) {
             StringToDrawLayer(level, drawLayer);
         }
 
+        // Not in the original: <Layer textureSubLevel="1">, and the same on a single texture or font string.
+        const char* layerSubLevel = layerNode->GetAttributeByName("textureSubLevel");
+        int32_t subLevel = layerSubLevel && *layerSubLevel ? SStrToInt(layerSubLevel) : 0;
+        auto subLevelOf = [subLevel](XMLNode* child) {
+            const char* own = child->GetAttributeByName("textureSubLevel");
+            return own && *own ? SStrToInt(own) : subLevel;
+        };
+
         for (XMLNode* child = layerNode->m_child; child; child = child->m_next) {
             if (!SStrCmpI(child->m_name.m_str, "Texture", STORM_MAX_STR)) {
                 CSimpleTexture* texture = LoadXML_Texture(child, this, status);
+                texture->SetSubLevel(subLevelOf(child));
                 texture->SetFrame(this, drawLayer, texture->m_shown);
             } else if (!SStrCmpI(child->m_name.m_str, "FontString", STORM_MAX_STR)) {
                 CSimpleFontString* string = LoadXML_String(child, this, status);
+                string->SetSubLevel(subLevelOf(child));
                 string->SetFrame(this, drawLayer, string->m_shown);
             } else if (!SStrCmpI(child->m_name.m_str, "MaskTexture", STORM_MAX_STR) || !SStrCmpI(child->m_name.m_str, "Line", STORM_MAX_STR)) {
                 // Not in the original: modern mask textures and lines. This client cannot mask or draw lines, so
                 // they are created as hidden textures; their names and parentKeys exist for the addon's code.
                 CSimpleTexture* texture = LoadXML_Texture(child, this, status);
+                texture->SetSubLevel(subLevelOf(child));
                 texture->SetFrame(this, drawLayer, 0);
 
                 if (!SStrCmpI(child->m_name.m_str, "MaskTexture", STORM_MAX_STR)) {
@@ -1463,7 +1474,24 @@ void CSimpleFrame::UnregisterRegion(CSimpleRegion* region) {
 // OFFSET: 0x004906C0
 void CSimpleFrame::AddFrameRegion(CSimpleRegion* region, uint32_t drawLayer) {
     region->SetLayoutScale(this->m_layoutScale, false);
-    this->m_drawLayers[drawLayer].LinkToTail(region);
+
+    // Not in the original: the layer's regions are kept in draw order, by sub-level and then by creation, as
+    // modern clients draw them (and CRenderBatch keeps that order).
+    CSimpleRegion* before = nullptr;
+
+    for (CSimpleRegion* other = this->m_drawLayers[drawLayer].Head(); other; other = this->m_drawLayers[drawLayer].Next(other)) {
+        if (other->m_subLevel > region->m_subLevel || (other->m_subLevel == region->m_subLevel && other->m_creationOrder > region->m_creationOrder)) {
+            before = other;
+            break;
+        }
+    }
+
+    if (before) {
+        this->m_drawLayers[drawLayer].LinkNode(region, 2, before);
+    } else {
+        this->m_drawLayers[drawLayer].LinkToTail(region);
+    }
+
     this->NotifyDrawLayerChanged(drawLayer);
 }
 

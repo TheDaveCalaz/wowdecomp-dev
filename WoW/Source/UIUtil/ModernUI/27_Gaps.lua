@@ -353,7 +353,10 @@ define("GetLooseMacroItemIcons", function(tbl) return tbl or {} end)
 
 if _G.PixelUtil == nil then
 	_G.PixelUtil = {
-		GetPixelToUIUnitFactor = function() return 768 / (select(2, GetPhysicalScreenSize and GetPhysicalScreenSize() or 768)) end,
+		GetPixelToUIUnitFactor = function()
+			local _, height = GetPhysicalScreenSize()
+			return 768 / ((height and height > 0) and height or 768)
+		end,
 		GetNearestPixelSize = function(size) return size end,
 		SetWidth = function(region, width) region:SetWidth(width) end,
 		SetHeight = function(region, height) region:SetHeight(height) end,

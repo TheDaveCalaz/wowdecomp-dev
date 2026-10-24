@@ -116,7 +116,19 @@ static int32_t Script_CreateTexture(lua_State* L) {
         CStatus status;
         texture->LoadXML(inheritNode, &status);
         texture->PostLoadXML(inheritNode, &status);
+
+        const char* subLevel = inheritNode->GetAttributeByName("textureSubLevel");
+
+        if (subLevel && *subLevel) {
+            texture->SetSubLevel(SStrToInt(subLevel));
+        }
+
         FrameXML_ReleaseHashNode(lua_tolstring(L, 4, nullptr));
+    }
+
+    // Not in the original: CreateTexture(name, layer, template, subLevel)
+    if (lua_isnumber(L, 5)) {
+        texture->SetSubLevel(static_cast<int32_t>(lua_tonumber(L, 5)));
     }
 
     int32_t animating;
@@ -191,6 +203,11 @@ static int32_t Script_CreateFontString(lua_State* L) {
         string->LoadXML(inheritNode, &status);
         string->PostLoadXML(inheritNode, &status);
         FrameXML_ReleaseHashNode(lua_tolstring(L, 4, nullptr));
+    }
+
+    // Not in the original: CreateFontString(name, layer, template, subLevel)
+    if (lua_isnumber(L, 5)) {
+        string->SetSubLevel(static_cast<int32_t>(lua_tonumber(L, 5)));
     }
 
     int32_t animating;

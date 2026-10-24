@@ -442,8 +442,19 @@ CTexture* ModernUI_MaskedTexture(CSimpleTexture* texture) {
     const Image& sizing = sizeFromSource ? source : *places[0].image;
     uint32_t outW = static_cast<uint32_t>(sizing.width * (sizeFromSource ? (spanU > 0.0f ? spanU : 1.0f) : places[0].width ? 1.0f / places[0].width : 1.0f));
     uint32_t outH = static_cast<uint32_t>(sizing.height * (sizeFromSource ? (spanV > 0.0f ? spanV : 1.0f) : places[0].height ? 1.0f / places[0].height : 1.0f));
-    outW = outW < 8 ? 8 : (outW > 512 ? 512 : outW);
-    outH = outH < 8 ? 8 : (outH > 512 ? 512 : outH);
+    // Textures here must be a power of two on each side.
+    auto powerOfTwo = [](uint32_t n) {
+        uint32_t p = 8;
+
+        while (p < n && p < 512) {
+            p <<= 1;
+        }
+
+        return p;
+    };
+
+    outW = powerOfTwo(outW);
+    outH = powerOfTwo(outH);
 
     std::vector<uint8_t> texels(static_cast<size_t>(outW) * outH * 4);
 

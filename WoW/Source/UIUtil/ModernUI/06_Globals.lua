@@ -20,6 +20,12 @@ define("WOW_PROJECT_CATACLYSM_CLASSIC", 14)
 define("WOW_PROJECT_MISTS_CLASSIC", 19)
 define("WOW_PROJECT_ID", WOW_PROJECT_WRATH_CLASSIC)
 
+-- Colours modern clients make from game data (GlobalColor), which Blizzard's shared code reads at load.
+if CreateColor then
+	define("PLAYER_FACTION_COLOR_HORDE", CreateColor(0.90, 0.05, 0.07))
+	define("PLAYER_FACTION_COLOR_ALLIANCE", CreateColor(0.29, 0.33, 0.91))
+end
+
 define("LE_EXPANSION_CLASSIC", 0)
 define("LE_EXPANSION_BURNING_CRUSADE", 1)
 define("LE_EXPANSION_WRATH_OF_THE_LICH_KING", 2)

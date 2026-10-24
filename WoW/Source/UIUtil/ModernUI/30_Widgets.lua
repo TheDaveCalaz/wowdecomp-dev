@@ -41,6 +41,8 @@ if _G.Minimap then remember("Minimap", Minimap) end
 if _G.WorldFrame then remember("WorldFrame", WorldFrame) end
 
 remember("Texture", host:CreateTexture())
+-- Font objects (CreateFont, GameFontNormal) have a method table of their own.
+if _G.CreateFont then remember("Font", CreateFont("ModernUIProbeFont")) end
 remember("FontString", host:CreateFontString())
 
 local group = host:CreateAnimationGroup()
@@ -55,7 +57,9 @@ end
 
 local frameTypes, regionTypes, animTypes = {}, {}, {}
 for kind, index in pairs(methodTables) do
-	if kind == "Texture" or kind == "FontString" then
+	if kind == "Font" then
+		-- not a region or a frame: only Font methods
+	elseif kind == "Texture" or kind == "FontString" then
 		regionTypes[#regionTypes + 1] = index
 	elseif kind == "AnimationGroup" or kind == "Animation" or kind == "Alpha" or kind == "Scale" or kind == "Translation" or kind == "Rotation" or kind == "Path" then
 		animTypes[#animTypes + 1] = index
@@ -390,6 +394,10 @@ end)
 addTo("FontString", "SetWordWrap", noop)
 addTo("FontString", "CanWordWrap", function() return true end)
 addTo("FontString", "CanNonSpaceWrap", falseFn)
+-- Modern fonts hold a font per alphabet; this client has one font for all, so every alphabet answers with the
+-- font object itself.
+addTo("Font", "GetFontObjectForAlphabet", function(self) return self end)
+addTo("Font", "SetFontObjectsToTry", function(self, font) if font and font.GetFont then self:SetFontObject(font) end end)
 addTo("FontString", "SetFontObjectsToTry", function(self, font) if font then self:SetFontObject(font) end end)
 addTo("FontString", "SetResizeToFitBounds", noop)
 addTo("FontString", "SetAutoFit", noop)

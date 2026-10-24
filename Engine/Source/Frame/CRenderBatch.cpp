@@ -16,7 +16,7 @@ static uint16_t s_quadIndices[6] = { 0, 1, 2, 2, 1, 3 };
 
 // VERIFY: d7a68913 auto
 // OFFSET: 0x00482770
-static int32_t SortByTexture(const void* elem1, const void* elem2) {
+[[maybe_unused]] static int32_t SortByTexture(const void* elem1, const void* elem2) {
     const CSimpleBatchedMesh* mesh1 = static_cast<const CSimpleBatchedMesh*>(elem1);
     const CSimpleBatchedMesh* mesh2 = static_cast<const CSimpleBatchedMesh*>(elem2);
 
@@ -37,9 +37,10 @@ static int32_t SortByTexture(const void* elem1, const void* elem2) {
 // VERIFY: 2cc3a1bc auto
 // OFFSET: 0x00484450
 void CRenderBatch::Finish() {
-    if (this->m_texturelist.Count() > 1) {
-        qsort(this->m_texturelist.Ptr(), this->m_texturelist.Count(), sizeof(CSimpleBatchedMesh), &SortByTexture);
-    }
+    // Not in the original: the original sorted the batch by texture (by the address of its CGxTex), so textures
+    // that overlap in one layer drew in an order that changed from run to run. Modern clients draw a layer in
+    // order (sub-level, then creation; see CSimpleFrame::AddFrameRegion), which UI art relies on (a background
+    // under its icon), so the queued order is kept.
 }
 
 // VERIFY: f0079ae6 auto

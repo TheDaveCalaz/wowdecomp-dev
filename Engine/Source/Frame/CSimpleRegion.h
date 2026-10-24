@@ -28,8 +28,9 @@ class CSimpleRegion : public CScriptRegion {
     /* 00CC */ uint8_t m_animating : 1;
     /* 00CC */ uint8_t m_animAlpha : 1;
     /* 00CD */ uint8_t m_animSavedAlpha;
-    /* 00CE */ uint8_t unused_00CE[2];
-    /* 00D0 */ uint32_t unused_00D0;
+    /* 00CE */ int8_t m_subLevel;          // not in the original: the modern draw sub-level (-8 to 7) in its layer
+    /* 00CF */ uint8_t unused_00CF;
+    /* 00D0 */ uint32_t m_creationOrder;    // not in the original: regions draw in sub-level, then creation order
 
     virtual ~CSimpleRegion();
     virtual void SetParent(CSimpleFrame* parent);
@@ -52,6 +53,7 @@ class CSimpleRegion : public CScriptRegion {
     void OnRegionChanged();
     void PreLoadXML(XMLNode* node, CStatus* status);
     void SetFrame(CSimpleFrame* frame, uint32_t drawLayer, int32_t show);
+    void SetSubLevel(int32_t subLevel);
     void SetVertexAlpha(uint8_t alpha);
     void SetVertexColor(const CImVector& color);
     void SetVertexColorRGBA(float r, float g, float b, float a);

@@ -51,7 +51,8 @@ static int32_t Script_GetDrawLayer(lua_State* L) {
     CSimpleTexture* texture = static_cast<CSimpleTexture*>(FrameScript_GetObjectThis(L, CSimpleTexture::GetObjectType()));
 
     lua_pushstring(L, DrawLayerToString(texture->m_drawLayer));
-    return 1;
+    lua_pushnumber(L, texture->m_subLevel); // not in the original: the modern sub-level
+    return 2;
 }
 
 // VERIFY: 07eebf27 auto
@@ -63,6 +64,11 @@ static int32_t Script_SetDrawLayer(lua_State* L) {
         uint32_t layer = texture->m_drawLayer;
 
         if (StringToDrawLayer(lua_tolstring(L, 2, nullptr), layer)) {
+            // Not in the original: SetDrawLayer(layer, subLevel)
+            if (lua_isnumber(L, 3)) {
+                texture->SetSubLevel(static_cast<int32_t>(lua_tonumber(L, 3)));
+            }
+
             texture->SetFrame(texture->m_parent, layer, texture->m_shown);
             return 0;
         }

@@ -153,6 +153,28 @@ void CSimpleRegion::HideThis() {
     this->m_visible = 0;
 }
 
+// Not in the original: a modern draw sub-level (SetDrawLayer(layer, subLevel), textureSubLevel in XML). A shown
+// region takes its new place in its layer's draw order at once.
+void CSimpleRegion::SetSubLevel(int32_t subLevel) {
+    subLevel = subLevel < -8 ? -8 : (subLevel > 7 ? 7 : subLevel);
+
+    if (this->m_subLevel == subLevel) {
+        return;
+    }
+
+    bool linked = this->m_visible && this->m_parent;
+
+    if (linked) {
+        this->m_parent->RemoveFrameRegion(this, this->m_drawLayer);
+    }
+
+    this->m_subLevel = static_cast<int8_t>(subLevel);
+
+    if (linked) {
+        this->m_parent->AddFrameRegion(this, this->m_drawLayer);
+    }
+}
+
 // VERIFY: b0e6ff7b auto
 // OFFSET: 0x00487C40
 void CSimpleRegion::ShowThis() {
@@ -341,6 +363,12 @@ CSimpleRegion::CSimpleRegion(CSimpleFrame* frame, uint32_t drawLayer, int32_t sh
     this->m_animating = 0;
     this->m_animAlpha = 0;
     this->m_animSavedAlpha = 0xFF;
+
+    // Not in the original: draw order within a layer (see CSimpleFrame::AddFrameRegion).
+    static uint32_t s_regionCount = 0;
+    this->m_subLevel = 0;
+    this->unused_00CF = 0;
+    this->m_creationOrder = ++s_regionCount;
 
     memset(this->m_colors, 0, this->m_colorCount * sizeof(CImVector));
     this->m_colorCount = 0;

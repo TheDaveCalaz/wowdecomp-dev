@@ -58,8 +58,9 @@ static int32_t Script_IsObjectType(lua_State* L) {
 static int32_t Script_GetDrawLayer(lua_State* L) {
     CSimpleFontString* string = static_cast<CSimpleFontString*>(FrameScript_GetObjectThis(L, CSimpleFontString::GetObjectType()));
     lua_pushstring(L, DrawLayerToString(string->m_drawLayer));
+    lua_pushnumber(L, string->m_subLevel); // not in the original: the modern sub-level
 
-    return 1;
+    return 2;
 }
 
 // VERIFY: 08943b3d auto
@@ -72,6 +73,11 @@ static int32_t Script_SetDrawLayer(lua_State* L) {
         const char* name = string->GetName();
         luaL_error(L, "Usage: %s:SetDrawLayer(\"layer\")", name ? name : "<unnamed>");
         return 0;
+    }
+
+    // Not in the original: SetDrawLayer(layer, subLevel)
+    if (lua_isnumber(L, 3)) {
+        string->SetSubLevel(static_cast<int32_t>(lua_tonumber(L, 3)));
     }
 
     string->SetFrame(string->m_parent, layer, string->m_shown);

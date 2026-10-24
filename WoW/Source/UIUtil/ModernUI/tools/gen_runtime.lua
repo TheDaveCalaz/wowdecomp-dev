@@ -134,6 +134,7 @@ if type(tables) == "table" then
 		SimpleCheckboxAPI = { "CheckButton" },
 		SimpleEditBoxAPI = { "EditBox" },
 		SimpleFontStringAPI = { "FontString" },
+		SimpleFontAPI = { "Font" },
 		SimpleTextureBaseAPI = { "Texture" },
 		SimpleStatusBarAPI = { "StatusBar" },
 		SimpleSliderAPI = { "Slider" },
