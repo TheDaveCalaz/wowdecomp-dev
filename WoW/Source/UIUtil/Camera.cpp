@@ -1676,6 +1676,24 @@ C3Vector CGCamera::GetCameraPosition(const C3Vector& target, float distance, con
     position.y = offset.y + position.y;
     position.z = offset.z + position.z;
 
+    // ModernUI: the over-the-shoulder camera of later clients (CVar test_cameraOverShoulder, in yards; positive
+    // moves the camera to the character's right, so the character sits left of centre). AddOns such as Narcissus
+    // frame the character with it.
+    static CVar* s_overShoulder = nullptr;
+
+    if (!s_overShoulder) {
+        s_overShoulder = CVar::Lookup("test_cameraOverShoulder");
+    }
+
+    if (s_overShoulder && distance > 0.0f && fabsf(s_overShoulder->m_floatValue) > 0.001f) {
+        // The second row of the camera's basis points to the camera's left.
+        C3Vector left = this->Right();
+        float shift = s_overShoulder->m_floatValue;
+        position.x -= left.x * shift;
+        position.y -= left.y * shift;
+        position.z -= left.z * shift;
+    }
+
     return position;
 }
 

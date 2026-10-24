@@ -1323,7 +1323,8 @@ void CSimpleFrame::PreLoadXML(XMLNode* node, CStatus* status) {
         // made their OnLoad fail; such a frame is given a generated name so the templates work.
         const char* inherits = node->GetAttributeByName("inherits");
 
-        if (inherits && (SStrStrI(inherits, "ScrollFrameTemplate") || SStrStrI(inherits, "ScrollBarTemplate") || SStrStrI(inherits, "UIDropDownMenuTemplate"))) {
+        if (inherits && (SStrStrI(inherits, "ScrollFrameTemplate") || SStrStrI(inherits, "ScrollBarTemplate") || SStrStrI(inherits, "UIDropDownMenuTemplate")
+            || SStrStrI(inherits, "SliderTemplate") || SStrStrI(inherits, "CheckButtonTemplate"))) {
             static uint32_t s_generated = 0;
             char generated[64];
             SStrPrintf(generated, sizeof(generated), "ModernUIFrame%u", ++s_generated);

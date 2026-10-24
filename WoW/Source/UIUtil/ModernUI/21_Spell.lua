@@ -289,3 +289,21 @@ bset("GetSpellBookItemLevelLearned", function() return 0 end)
 bset("GetSkillLineIndexByID", function() return nil end)
 bset("ContainsAnyDisenchantSpell", function() return IsSpellKnown(13262) end)
 bset("GetCurrentLevelSpells", function() return {} end)
+
+-- GetSpellBookItemInfo(index, bookType) as on Wrath Classic: the entry's type and spell ID (two values; the
+-- retail table form is C_SpellBook.GetSpellBookItemInfo).
+if _G.GetSpellBookItemInfo == nil then
+	_G.GetSpellBookItemInfo = function(index, book)
+		book = (book == 1 or book == "pet" or book == BOOKTYPE_PET) and (BOOKTYPE_PET or "pet") or (BOOKTYPE_SPELL or "spell")
+		local name = GetSpellName(index, book)
+		if not name then
+			return nil
+		end
+		local link = GetSpellLink(index, book)
+		local id = link and tonumber(link:match("spell:(%d+)"))
+		if book == (BOOKTYPE_PET or "pet") then
+			return "PETACTION", id
+		end
+		return IsSpellKnown and id and not IsSpellKnown(id) and "FUTURESPELL" or "SPELL", id
+	end
+end

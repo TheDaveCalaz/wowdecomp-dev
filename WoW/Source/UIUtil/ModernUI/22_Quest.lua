@@ -396,3 +396,13 @@ gset("GetFriendshipReputation", function(factionID)
 	}
 end)
 gset("GetFriendshipReputationRanks", function() return { currentLevel = 0, maxLevel = 0 } end)
+
+-- GetQuestTagInfo(questID) as on Wrath Classic: the quest's tag ID and name, for quests in the log.
+if _G.GetQuestTagInfo == nil then
+	_G.GetQuestTagInfo = function(questID)
+		local info = C_QuestLog.GetQuestTagInfo(questID)
+		if info then
+			return info.tagID, info.tagName
+		end
+	end
+end

@@ -309,10 +309,33 @@ local signal = ModernUI_SignalEvent
 do
 	local createFrame = CreateFrame
 	local environment = _G.ModernUI_AddOnEnvironment
-	CreateFrame = function(...)
-		local frame = createFrame(...)
+	-- The parts of this client's templates are named "$parentText", "$parentLow"...; modern templates also
+	-- give them keys (frame.Text, frame.Low...), which modern code uses.
+	local function keyParts(frame)
+		local name = frame:GetName()
+		if not name then
+			return
+		end
+		local length = #name
+		local function key(part)
+			local partName = part.GetName and part:GetName()
+			if partName and #partName > length and partName:sub(1, length) == name then
+				local suffix = partName:sub(length + 1)
+				if suffix:find("^[A-Z]%w*$") and rawget(frame, suffix) == nil then
+					frame[suffix] = part
+				end
+			end
+		end
+		for _, region in ipairs({ frame:GetRegions() }) do key(region) end
+		for _, child in ipairs({ frame:GetChildren() }) do key(child) end
+	end
+	CreateFrame = function(frameType, name, parent, template, ...)
+		local frame = createFrame(frameType, name, parent, template, ...)
 		if frame and environment and getfenv(2) == environment then
 			ModernUI_SetObjectModern(frame, true)
+		end
+		if frame and template then
+			keyParts(frame)
 		end
 		return frame
 	end

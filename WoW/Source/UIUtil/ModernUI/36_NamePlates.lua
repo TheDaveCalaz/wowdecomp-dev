@@ -42,14 +42,35 @@ local function makeUnitFrame(plate)
 		end
 	end
 	local show, hide = unitFrame.Show, unitFrame.Hide
+	local hidden = false
 	unitFrame.Show = function(self)
+		hidden = false
 		setVisible(true)
 		show(self)
 	end
 	unitFrame.Hide = function(self)
+		hidden = true
 		setVisible(false)
 		hide(self)
 	end
+	unitFrame.IsShown = function() return not hidden end
+	unitFrame.IsVisible = function() return not hidden and plate:IsVisible() end
+	-- The client redraws its own plate parts (name colour, health, highlight) as the unit changes; while
+	-- Blizzard's plate is hidden they are kept invisible.
+	plate:HookScript("OnUpdate", function()
+		if hidden then
+			for _, region in ipairs(native) do
+				if region:GetAlpha() > 0 then
+					region:SetAlpha(0)
+				end
+			end
+			for _, child in ipairs(nativeChildren) do
+				if child:GetAlpha() > 0 then
+					child:SetAlpha(0)
+				end
+			end
+		end
+	end)
 	unitFrame.SetShown = function(self, shown)
 		if shown then self:Show() else self:Hide() end
 	end
