@@ -1689,6 +1689,7 @@ C3Vector CGCamera::GetCameraPosition(const C3Vector& target, float distance, con
         // The second row of the camera's basis points to the camera's left.
         C3Vector left = this->Right();
         float shift = s_overShoulder->m_floatValue;
+        shift = shift < -5.0f ? -5.0f : (shift > 5.0f ? 5.0f : shift);
         position.x -= left.x * shift;
         position.y -= left.y * shift;
         position.z -= left.z * shift;

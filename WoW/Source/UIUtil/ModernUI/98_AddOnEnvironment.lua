@@ -155,3 +155,19 @@ do
 		return file, id
 	end
 end
+
+-- SetUIVisibility: modern clients hide or show the whole interface (as Alt-Z does); this client's only turns the
+-- world's unit names and highlights off, and its interface code hides UIParent itself.
+do
+	local SetUIVisibility_335 = _G.SetUIVisibility
+	modern.SetUIVisibility = function(visible)
+		if SetUIVisibility_335 then
+			SetUIVisibility_335(visible)
+		end
+		if visible then
+			UIParent:Show()
+		else
+			UIParent:Hide()
+		end
+	end
+end
