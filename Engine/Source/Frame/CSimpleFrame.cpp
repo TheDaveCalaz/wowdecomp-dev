@@ -28,6 +28,7 @@
 #include "Engine/Source/Gx/CGxDevice/CGxDevice.h"
 #include "Engine/Source/Storm/H/storm.h"
 #include "Engine/Source/Tempest/CRect.h"
+#include "Engine/Source/Frame/ModernUIMask.h"
 #include "Engine/Source/lua-5.1/src/lauxlib.h"
 #include "Engine/Source/lua-5.1/src/lua.h"
 
@@ -670,6 +671,10 @@ void CSimpleFrame::LoadXML_Layers(XMLNode* node, CStatus* status) {
                 // they are created as hidden textures; their names and parentKeys exist for the addon's code.
                 CSimpleTexture* texture = LoadXML_Texture(child, this, status);
                 texture->SetFrame(this, drawLayer, 0);
+
+                if (!SStrCmpI(child->m_name.m_str, "MaskTexture", STORM_MAX_STR)) {
+                    ModernUI_NoteXMLMask(this, texture, child);
+                }
             } else {
                 const char* frameName = this->GetName();
                 status->Add(STATUS_WARNING, "Frame %s: Unknown child node in %s element: %s", frameName ? frameName : "<unnamed>", layerNode->m_name.m_str, child->m_name.m_str);
@@ -1388,6 +1393,9 @@ void CSimpleFrame::PostLoadXML(XMLNode* node, CStatus* status) {
             region->AnimActivated(nullptr, 1, activeAlpha);
         }
     }
+
+    // Not in the original: <MaskTexture> elements naming the textures they mask, now that the keys exist.
+    ModernUI_ResolveXMLMasks(this);
 
     if (this->m_onLoad.m_luaRef) {
         this->RunScript(this->m_onLoad, 0, nullptr);

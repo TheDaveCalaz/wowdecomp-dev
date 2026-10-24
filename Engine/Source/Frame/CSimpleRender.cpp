@@ -42,6 +42,7 @@
 #include "Engine/Source/Services/SysMessage.h"
 #include "Engine/Source/Tempest/CImVector.h"
 #include "Engine/Source/Tempest/CRect.h"
+#include "Engine/Source/Frame/ModernUIMask.h"
 
 // STATIC: 0x009EA254
 static const uint8_t s_letterHasFinalConsonant[26] = { 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -2210,6 +2211,8 @@ int32_t CSimpleTexture::GetScriptMetaTable() {
 // VERIFY: ec4a9c07 auto
 // OFFSET: [0x00482860, 0x00483010]
 CSimpleTexture::~CSimpleTexture() {
+    ModernUI_ForgetMaskTexture(this); // not in the original
+
     if (this->m_texture) {
         HandleClose(reinterpret_cast<HOBJECT>(this->m_texture));
     }

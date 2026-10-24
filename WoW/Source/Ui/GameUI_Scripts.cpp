@@ -170,6 +170,7 @@
 #include "Engine/Source/Tempest/CMath.h"
 #include "WoW/Source/DB/Rec/PaperDollItemFrameRec.h"
 #include "WoW/Source/Object/WGUID.h"
+#include "Engine/Source/Frame/ModernUIMask.h"
 
 // STATIC: 0x00BD0CC4
 static CWOWClientStatus* s_loadAddOnStatus;
@@ -6634,6 +6635,8 @@ static FrameScript_Method s_ScriptFunctions[] = {
     { "ModernUI_LoadData", &Script_ModernUI_LoadData },
     { "ModernUI_Log", &Script_ModernUI_Log },
     { "ModernUI_RegisterAtlas", &Script_ModernUI_RegisterAtlas },
+    { "ModernUI_AddMaskTexture", &Script_ModernUI_AddMaskTexture },
+    { "ModernUI_RemoveMaskTexture", &Script_ModernUI_RemoveMaskTexture },
     { "ModernUI_RegisterColorName", &Script_ModernUI_RegisterColorName },
     { "ModernUI_GetAtlasInfo", &Script_ModernUI_GetAtlasInfo },
     { "CopyToClipboard", &Script_CopyToClipboard },

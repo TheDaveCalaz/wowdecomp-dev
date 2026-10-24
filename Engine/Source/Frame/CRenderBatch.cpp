@@ -5,6 +5,7 @@
 #include "Engine/Source/Base/Coordinate.h"
 #include "Engine/Source/Frame/CSimpleRender.h"
 #include "Engine/Source/Frame/CSimpleTexture.h"
+#include "Engine/Source/Frame/ModernUIMask.h"
 #include "Engine/Source/Gx/CGxTex.h"
 #include "Engine/Source/Gxu/GxuFont.h"
 #include "Engine/Source/Services/Texture.h"
@@ -221,6 +222,18 @@ void CRenderBatch::QueueTexture(CSimpleTexture* texture) {
 
     uint32_t colorCount = texture->m_colorCount;
     const CImVector* colors = colorCount ? texture->m_colors : nullptr;
+
+    // Not in the original client: a texture with masks is drawn with an image composed for it (ModernUIMask.cpp).
+    if (ModernUI_HasMasks(texture)) {
+        static const C2Vector s_wholeTexCoords[4] = { C2Vector(0.0f, 0.0f), C2Vector(0.0f, 1.0f), C2Vector(1.0f, 0.0f), C2Vector(1.0f, 1.0f) };
+        CTexture* masked = ModernUI_MaskedTexture(texture);
+
+        if (masked) {
+            EGxBlend alphaMode = texture->m_alphaMode < GxBlend_Alpha ? GxBlend_Alpha : texture->m_alphaMode;
+            this->Queue(masked, alphaMode, 4, texture->m_positions, s_wholeTexCoords, colorCount > 1 ? 4 : 0, colors, 6, s_quadIndices, texture->m_shader);
+            return;
+        }
+    }
 
     this->Queue(texture->m_texture, texture->m_alphaMode, 4, texture->m_positions, texture->m_texCoords, colorCount > 1 ? 4 : 0, colors, 6, s_quadIndices, texture->m_shader);
 }

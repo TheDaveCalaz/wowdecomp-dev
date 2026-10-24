@@ -12,10 +12,12 @@
 #include "Engine/Source/Base/Handle.h"
 #include "Engine/Source/Services/Texture.h"
 #include "Engine/Source/Storm/H/storm.h"
+#include "Engine/Source/BLPFile/blp.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ONLY_PNG
 #define STBI_ONLY_JPEG
+#define STBI_ONLY_TGA
 #define STBI_NO_STDIO
 #include "ThirdParty/stb/stb_image.h"
 
@@ -205,4 +207,108 @@ CTexture* CreateImageTexture(const char* fileName, CGxTexFlags texFlags) {
     texture->m_gxHeight = static_cast<uint16_t>(base.height);
 
     return reinterpret_cast<CTexture*>(HandleCreate(texture, "HTEXTURE"));
+}
+
+// Decodes any texture file the client can show (BLP, TGA, PNG, JPEG) into BGRA texels, for code that needs the
+// pixels themselves (the mask composition in Frame/ModernUIMask.cpp). The name may come with or without an
+// extension, as texture names do.
+bool ModernUI_DecodeTextureFile(const char* fileName, uint32_t& width, uint32_t& height, std::vector<uint8_t>& bgra) {
+    if (!fileName || !*fileName) {
+        return false;
+    }
+
+    char base[260];
+    SStrCopy(base, fileName, sizeof(base));
+
+    for (char* c = base; *c; c++) {
+        if (*c == '/') {
+            *c = '\\';
+        }
+    }
+
+    char* dot = SStrChrR(base, '.');
+    char* slash = SStrChrR(base, '\\');
+
+    if (dot && (!slash || dot > slash)) {
+        if (!SStrCmpI(dot, ".blp", STORM_MAX_STR) || !SStrCmpI(dot, ".tga", STORM_MAX_STR)) {
+            *dot = '\0';
+        }
+    }
+
+    // BLP
+    char path[270];
+    SStrPrintf(path, sizeof(path), "%s.blp", base);
+
+    if (SFile::FileExistsEx(path, 1)) {
+        CBLPFile image;
+
+        if (image.Open(path, 0)) {
+            uint8_t* data = nullptr;
+            uint32_t stride = 0;
+
+            if (image.Lock(PIXEL_ARGB8888, 0, data, stride) && data) {
+                width = image.m_header.m_width;
+                height = image.m_header.m_height;
+                bgra.resize(static_cast<size_t>(width) * height * 4);
+
+                for (uint32_t y = 0; y < height; y++) {
+                    memcpy(&bgra[static_cast<size_t>(y) * width * 4], data + static_cast<size_t>(y) * stride, static_cast<size_t>(width) * 4);
+                }
+
+                image.Unlock(0);
+                image.Close();
+                return width && height;
+            }
+
+            image.Close();
+        }
+    }
+
+    // TGA, PNG, JPEG
+    static const char* const s_extensions[] = { ".tga", "", ".png", ".jpg", ".jpeg" };
+
+    for (const char* extension : s_extensions) {
+        SStrPrintf(path, sizeof(path), "%s%s", base, extension);
+
+        if (!*extension && SStrCmpI(path, fileName, STORM_MAX_STR)) {
+            SStrCopy(path, fileName, sizeof(path));
+        }
+
+        if (!SFile::FileExistsEx(path, 1)) {
+            continue;
+        }
+
+        void* data = nullptr;
+        uint32_t size = 0;
+
+        if (!SFile::ReadFile(nullptr, path, &data, &size, 0, 1, nullptr)) {
+            continue;
+        }
+
+        int32_t w = 0;
+        int32_t h = 0;
+        int32_t channels = 0;
+        stbi_uc* pixels = stbi_load_from_memory(static_cast<const stbi_uc*>(data), static_cast<int32_t>(size), &w, &h, &channels, 4);
+        SFile::Unload(data);
+
+        if (!pixels) {
+            continue;
+        }
+
+        width = static_cast<uint32_t>(w);
+        height = static_cast<uint32_t>(h);
+        bgra.resize(static_cast<size_t>(w) * h * 4);
+
+        for (size_t i = 0, n = static_cast<size_t>(w) * h; i < n; i++) {
+            bgra[i * 4 + 0] = pixels[i * 4 + 2];
+            bgra[i * 4 + 1] = pixels[i * 4 + 1];
+            bgra[i * 4 + 2] = pixels[i * 4 + 0];
+            bgra[i * 4 + 3] = pixels[i * 4 + 3];
+        }
+
+        stbi_image_free(pixels);
+        return width && height;
+    }
+
+    return false;
 }

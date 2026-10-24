@@ -307,11 +307,49 @@ addTo("Texture", "SetAtlas", function(self, atlas, useAtlasSize)
 	return true
 end)
 addTo("Texture", "GetAtlas", function(self) return stateOf(self).atlas end)
-addTo("Texture", "SetMask", noop)
-addTo("Texture", "AddMaskTexture", noop)
-addTo("Texture", "RemoveMaskTexture", noop)
-addTo("Texture", "GetNumMaskTextures", function() return 0 end)
-addTo("Texture", "GetMaskTexture", nilFn)
+-- Masks: the client composes a masked texture's image with its masks' alpha (Frame/ModernUIMask.cpp).
+local function masksOf(self)
+	local state = stateOf(self)
+	state.masks = state.masks or {}
+	return state.masks
+end
+addTo("Texture", "AddMaskTexture", function(self, mask)
+	if type(mask) ~= "table" or mask == self then return end
+	local masks = masksOf(self)
+	for _, existing in ipairs(masks) do
+		if existing == mask then return end
+	end
+	masks[#masks + 1] = mask
+	if ModernUI_AddMaskTexture then ModernUI_AddMaskTexture(self, mask) end
+end)
+addTo("Texture", "RemoveMaskTexture", function(self, mask)
+	local masks = masksOf(self)
+	for i, existing in ipairs(masks) do
+		if existing == mask then
+			table.remove(masks, i)
+			break
+		end
+	end
+	if ModernUI_RemoveMaskTexture then ModernUI_RemoveMaskTexture(self, mask) end
+end)
+addTo("Texture", "GetNumMaskTextures", function(self) return #masksOf(self) end)
+addTo("Texture", "GetMaskTexture", function(self, index) return masksOf(self)[index] end)
+-- SetMask(file): one mask of that image covering the texture; nil or "" removes it.
+addTo("Texture", "SetMask", function(self, file)
+	local state = stateOf(self)
+	if state.fileMask then
+		self:RemoveMaskTexture(state.fileMask)
+	end
+	if not file or file == "" then return end
+	local parent = self:GetParent()
+	if not parent or not parent.CreateMaskTexture then return end
+	local mask = state.fileMask or parent:CreateMaskTexture()
+	state.fileMask = mask
+	mask:SetTexture(file)
+	mask:ClearAllPoints()
+	mask:SetAllPoints(self)
+	self:AddMaskTexture(mask)
+end)
 addTo("Texture", "SetVertexOffset", noop)
 addTo("Texture", "SetTextureSliceMargins", noop)
 addTo("Texture", "SetTextureSliceMode", noop)
