@@ -48,6 +48,9 @@ int32_t FrameXML_CreateFrames(const char* tocFile, const char* wrapper, MD5_CTX*
 void FrameXML_FreeHashNodes();
 int32_t FrameXML_GetDebugLevel();
 int32_t FrameXML_GuessNumFiles(const char* toc);
+// Not in the original: removes modern load conditions ("[AllowLoadGameType wrath]") from a .toc line; false
+// when they rule this client out.
+bool FrameXML_ApplyTocConditions(char* line);
 XMLTree* FrameXML_LoadXML(const char* filename, MD5_CTX* md5, CStatus* status);
 void FrameXML_RegisterBuiltInFile(const char* name, const char* data, uint32_t size); // not in the original
 int32_t FrameXML_ProcessFile(const char* filename, const char* wrapper, MD5_CTX* md5, CStatus* status);

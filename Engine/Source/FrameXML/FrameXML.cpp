@@ -733,7 +733,7 @@ static bool ListHasToken(const char* list, size_t length, const char* const* tok
     return false;
 }
 
-static bool ApplyTocConditions(char* line) {
+bool FrameXML_ApplyTocConditions(char* line) {
     static const char* const s_gameTypes[] = { "wrath", "classic", nullptr };
     char locale[8] = "enUS";
     CVar* localeVar = CVar::Lookup("locale");
@@ -858,7 +858,7 @@ int32_t FrameXML_CreateFrames(const char* tocFile, const char* wrapper, MD5_CTX*
             first++;
         }
 
-        if (*first && *first != '#' && ApplyTocConditions(line)) {
+        if (*first && *first != '#' && FrameXML_ApplyTocConditions(line)) {
             char expanded[1024];
             char path[260];
             ExpandTocLine(line, expanded, sizeof(expanded), "Classic", "Wrath");

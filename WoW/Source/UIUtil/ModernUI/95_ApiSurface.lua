@@ -343,7 +343,7 @@ local F = {
 "C_Navigation","WasClampedToScreen","b",
 "C_InstanceLeaver","IsPlayerLeaver","b",
 "C_Intl","CompareStrings","0",
-"C_Intl","CreateLocaleContext","n",
+"C_Intl","CreateLocaleContext","{LuaLocaleContext}",
 "C_Intl","FindBreaks","t",
 "C_Intl","FindStringMatches","t",
 "C_Intl","FoldCase","s",
@@ -696,12 +696,12 @@ local F = {
 "C_ActionBar","FindSpellActionButtons","t",
 "C_ActionBar","GetActionAutocast","bb",
 "C_ActionBar","GetActionBarPage","0",
-"C_ActionBar","GetActionChargeDuration","n",
+"C_ActionBar","GetActionChargeDuration","{LuaDurationObject}",
 "C_ActionBar","GetActionCharges","t",
 "C_ActionBar","GetActionCooldown","t",
-"C_ActionBar","GetActionCooldownDuration","n",
+"C_ActionBar","GetActionCooldownDuration","{LuaDurationObject}",
 "C_ActionBar","GetActionDisplayCount","s",
-"C_ActionBar","GetActionLossOfControlCooldownDuration","n",
+"C_ActionBar","GetActionLossOfControlCooldownDuration","{LuaDurationObject}",
 "C_ActionBar","GetActionLossOfControlCooldownInfo","t",
 "C_ActionBar","GetActionText","s",
 "C_ActionBar","GetActionTexture","0",
@@ -1624,8 +1624,8 @@ local F = {
 "C_CurrencyInfo","GetCurrencyListLink","s",
 "C_CurrencyInfo","IsCurrencyContainer","b",
 "C_Cursor","GetCursorItem","n",
-"C_CurveUtil","CreateColorCurve","n",
-"C_CurveUtil","CreateCurve","n",
+"C_CurveUtil","CreateColorCurve","{LuaColorCurveObject}",
+"C_CurveUtil","CreateCurve","{LuaCurveObject}",
 "C_CurveUtil","EvaluateColorFromBoolean","c",
 "C_CurveUtil","EvaluateColorValueFromBoolean","0",
 "C_CurveUtil","EvaluateGameCurve","0",
@@ -1663,9 +1663,9 @@ local F = {
 "","TogglePlayerBounds","",
 "","TogglePortals","",
 "","ToggleTris","",
-"C_DurationUtil","CreateDuration","n",
-"C_DurationUtil","CreateDurationTextBinding","n",
-"C_DurationUtil","CreateManualClock","n",
+"C_DurationUtil","CreateDuration","{LuaDurationObject}",
+"C_DurationUtil","CreateDurationTextBinding","{DurationTextBinding}",
+"C_DurationUtil","CreateManualClock","{LuaDurationManualClock}",
 "C_DyeColor","GetAllDyeColorCategories","t",
 "C_DyeColor","GetAllDyeColors","t",
 "C_DyeColor","GetDyeColorCategoryInfo","n",
@@ -2077,7 +2077,7 @@ local F = {
 "C_HousingBasicMode","SetGridVisible","",
 "C_HousingBasicMode","StartPlacingNewDecor","",
 "C_HousingBasicMode","StartPlacingPreviewDecor","",
-"C_HousingCatalog","CreateCatalogSearcher","n",
+"C_HousingCatalog","CreateCatalogSearcher","{HousingCatalogSearcher}",
 "C_HousingCatalog","DeletePreviewCartDecor","",
 "C_HousingCatalog","DestroyEntry","",
 "C_HousingCatalog","GetAllFilterTagGroups","t",
@@ -2537,7 +2537,7 @@ local F = {
 "","GetOSLocale","s",
 "","AbbreviateLargeNumbers","s",
 "","AbbreviateNumbers","s",
-"","CreateAbbreviateConfig","n",
+"","CreateAbbreviateConfig","{AbbreviateConfig}",
 "","DeclineName","s",
 "","GetDefaultAbbreviationBreakpoints","t",
 "","GetNumDeclensionSets","0",
@@ -2909,7 +2909,7 @@ local F = {
 "","ToggleSheath","",
 "C_PvP","CanSurrenderArena","b",
 "C_PvP","ClearLocklistMap","",
-"C_PvP","GetArenaCrowdControlDuration","n",
+"C_PvP","GetArenaCrowdControlDuration","{LuaDurationObject}",
 "C_PvP","GetArenaCrowdControlInfo","0000",
 "C_PvP","GetArenaRewards","00nnn",
 "C_PvP","GetBattlefieldVehicleInfo","t",
@@ -3211,17 +3211,17 @@ local F = {
 "C_Spell","EnableSpellRangeCheck","",
 "C_Spell","GetSchoolString","s",
 "C_Spell","GetSpellCastCount","0",
-"C_Spell","GetSpellChargeDuration","n",
+"C_Spell","GetSpellChargeDuration","{LuaDurationObject}",
 "C_Spell","GetSpellCharges","t",
 "C_Spell","GetSpellCooldown","t",
-"C_Spell","GetSpellCooldownDuration","n",
+"C_Spell","GetSpellCooldownDuration","{LuaDurationObject}",
 "C_Spell","GetSpellDescription","s",
 "C_Spell","GetSpellDisplayCount","s",
 "C_Spell","GetSpellIDForSpellIdentifier","0",
 "C_Spell","GetSpellInfo","t",
 "C_Spell","GetSpellLevelLearned","0",
 "C_Spell","GetSpellLink","s",
-"C_Spell","GetSpellLossOfControlCooldownDuration","n",
+"C_Spell","GetSpellLossOfControlCooldownDuration","{LuaDurationObject}",
 "C_Spell","GetSpellLossOfControlCooldownInfo","t",
 "C_Spell","GetSpellMaxCumulativeAuraApplications","0",
 "C_Spell","GetSpellName","s",
@@ -3264,9 +3264,9 @@ local F = {
 "","GetBackgroundLoadingStatus","0",
 "","GetDownloadedPercentage","0",
 "","GetFileStreamingStatus","0",
-"C_StringUtil","CreateAbbreviatedNumberFormatter","0",
-"C_StringUtil","CreateNumericRuleFormatter","n",
-"C_StringUtil","CreateSecondsFormatter","n",
+"C_StringUtil","CreateAbbreviatedNumberFormatter","{AbbreviatedNumberFormatter}",
+"C_StringUtil","CreateNumericRuleFormatter","{NumericRuleFormatter}",
+"C_StringUtil","CreateSecondsFormatter","{SecondsFormatter}",
 "C_StringUtil","EscapeDecimalNonPrintables","s",
 "C_StringUtil","EscapeLuaFormatString","s",
 "C_StringUtil","EscapeLuaPatterns","s",
@@ -3352,7 +3352,7 @@ local F = {
 "","DestroyTotem","",
 "","GetNumTotemSlots","0",
 "","GetTotemCannotDismiss","n",
-"","GetTotemDuration","n",
+"","GetTotemDuration","{LuaDurationObject}",
 "","GetTotemInfo","bs00000",
 "","GetTotemTimeLeft","n",
 "","TargetTotem","",
@@ -3651,7 +3651,7 @@ local F = {
 "C_UnitAuras","GetAuraDataBySlot","n",
 "C_UnitAuras","GetAuraDataBySpellName","n",
 "C_UnitAuras","GetAuraDispelTypeColor","c",
-"C_UnitAuras","GetAuraDuration","n",
+"C_UnitAuras","GetAuraDuration","{LuaDurationObject}",
 "C_UnitAuras","GetAuraSlots","n0",
 "C_UnitAuras","GetBuffDataByIndex","n",
 "C_UnitAuras","GetCooldownAuraBySpellID","n",
@@ -3669,7 +3669,7 @@ local F = {
 "C_UnitAuras","SwitchAuraDataProvider","",
 "C_UnitAuras","TriggerPrivateAuraShowDispelType","",
 "C_UnitAuras","WantsAlteredForm","b",
-"","CreateUnitHealPredictionCalculator","n",
+"","CreateUnitHealPredictionCalculator","{UnitHealPredictionCalculator}",
 "","GetUnitEmpowerHoldAtMaxTime","0",
 "","GetUnitEmpowerMinHoldTime","0",
 "","GetUnitEmpowerStageDuration","0",
@@ -3697,9 +3697,9 @@ local F = {
 "","UnitCanAttack","b",
 "","UnitCanCooperate","b",
 "","UnitCanPetBattle","b",
-"","UnitCastingDuration","n",
+"","UnitCastingDuration","{LuaDurationObject}",
 "","UnitCastingInfo","ss000bsn0n0",
-"","UnitChannelDuration","n",
+"","UnitChannelDuration","{LuaDurationObject}",
 "","UnitChannelInfo","ss000bn0b0n",
 "","UnitClass","ss0",
 "","UnitClassBase","s0",
@@ -3709,7 +3709,7 @@ local F = {
 "","UnitCreatureType","s0",
 "","UnitDetailedThreatSituation","b0000",
 "","UnitDistanceSquared","0b",
-"","UnitEmpoweredChannelDuration","n",
+"","UnitEmpoweredChannelDuration","{LuaDurationObject}",
 "","UnitEmpoweredStageDurations","t",
 "","UnitEmpoweredStagePercentages","t",
 "","UnitExists","b",
@@ -3952,7 +3952,7 @@ local M = {
 "AbbreviateConfigAPI","SetAbbreviateNumberData","",
 "AbbreviatedNumberFormatterAPI","AddBreakpoint","",
 "AbbreviatedNumberFormatterAPI","ClearBreakpoints","",
-"AbbreviatedNumberFormatterAPI","Copy","0",
+"AbbreviatedNumberFormatterAPI","Copy","{AbbreviatedNumberFormatter}",
 "AbbreviatedNumberFormatterAPI","GetBreakpoints","t",
 "AbbreviatedNumberFormatterAPI","ResetBreakpoints","",
 "AbbreviatedNumberFormatterAPI","SetBreakpoints","",
@@ -4359,7 +4359,7 @@ local M = {
 "HousingLayoutPinFrameAPI","SetUpdateCallback","",
 "LuaColorCurveObjectAPI","AddPoint","",
 "LuaColorCurveObjectAPI","ClearPoints","",
-"LuaColorCurveObjectAPI","Copy","n",
+"LuaColorCurveObjectAPI","Copy","{LuaColorCurveObject}",
 "LuaColorCurveObjectAPI","Evaluate","c",
 "LuaColorCurveObjectAPI","EvaluateUnpacked","0000",
 "LuaColorCurveObjectAPI","GetPoint","n",
@@ -4370,7 +4370,7 @@ local M = {
 "LuaColorCurveObjectAPI","SetToDefaults","",
 "LuaCurveObjectAPI","AddPoint","",
 "LuaCurveObjectAPI","ClearPoints","",
-"LuaCurveObjectAPI","Copy","n",
+"LuaCurveObjectAPI","Copy","{LuaCurveObject}",
 "LuaCurveObjectAPI","Evaluate","0",
 "LuaCurveObjectAPI","GetPoint","n",
 "LuaCurveObjectAPI","GetPointCount","0",
@@ -4387,7 +4387,7 @@ local M = {
 "LuaDurationManualClockAPI","RewindTime","",
 "LuaDurationManualClockAPI","SetTime","",
 "LuaDurationObjectAPI","Assign","",
-"LuaDurationObjectAPI","Copy","n",
+"LuaDurationObjectAPI","Copy","{LuaDurationObject}",
 "LuaDurationObjectAPI","EvaluateElapsedDuration","n",
 "LuaDurationObjectAPI","EvaluateElapsedPercent","n",
 "LuaDurationObjectAPI","EvaluateRemainingDuration","n",
@@ -4433,7 +4433,7 @@ local M = {
 "NumericFormatterAPI","FormatNumber","s",
 "NumericRuleFormatterAPI","AddBreakpoint","",
 "NumericRuleFormatterAPI","ClearBreakpoints","",
-"NumericRuleFormatterAPI","Copy","n",
+"NumericRuleFormatterAPI","Copy","{NumericRuleFormatter}",
 "NumericRuleFormatterAPI","GetBreakpoints","t",
 "NumericRuleFormatterAPI","SetBreakpoints","",
 "SecondsFormatterAPI","CanApproximate","b",
@@ -5213,7 +5213,7 @@ local M = {
 "SimpleStatusBarAPI","GetStatusBarColor","0000",
 "SimpleStatusBarAPI","GetStatusBarDesaturation","0",
 "SimpleStatusBarAPI","GetStatusBarTexture","n",
-"SimpleStatusBarAPI","GetTimerDuration","n",
+"SimpleStatusBarAPI","GetTimerDuration","{LuaDurationObject}",
 "SimpleStatusBarAPI","GetValue","0",
 "SimpleStatusBarAPI","IsInterpolating","b",
 "SimpleStatusBarAPI","IsStatusBarDesaturated","b",
@@ -6129,7 +6129,8 @@ local _G = _G
 local type, rawget, unpack, select, ipairs, pairs = type, rawget, unpack, select, ipairs, pairs
 
 -- One shared answer per return signature ("b0t" = false, 0, a new table; c = a white colour, v and w = zero
--- 2D and 3D vectors).
+-- 2D and 3D vectors; {Type} = a new object of a documented object type, such as a curve or a duration, made
+-- by ModernUI_CreateObject in 35_Objects.lua).
 local answers = {}
 local function answerFor(rets)
 	if rets == "" then
@@ -6139,23 +6140,41 @@ local function answerFor(rets)
 	if cached then
 		return cached
 	end
-	local n = #rets
+	local tokens = {}
+	local i = 1
+	while i <= #rets do
+		local c = rets:sub(i, i)
+		if c == "{" then
+			local close = rets:find("}", i, true)
+			tokens[#tokens + 1] = rets:sub(i, close)
+			i = close + 1
+		else
+			tokens[#tokens + 1] = c
+			i = i + 1
+		end
+	end
+	local n = #tokens
 	local f
-	if not rets:find("[tcvw]") then
+	if not rets:find("[tcvw{]") then
 		local values = {}
-		for i = 1, n do
-			local c = rets:sub(i, i)
-			values[i] = (c == "b" and false) or (c == "0" and 0) or (c == "s" and "") or nil
+		for k = 1, n do
+			local c = tokens[k]
+			values[k] = (c == "b" and false) or (c == "0" and 0) or (c == "s" and "") or nil
 		end
 		f = function() return unpack(values, 1, n) end
 	else
 		f = function()
 			local values = {}
-			for i = 1, n do
-				local c = rets:sub(i, i)
-				values[i] = (c == "b" and false) or (c == "0" and 0) or (c == "s" and "") or (c == "t" and {})
-					or (c == "c" and CreateColor(1, 1, 1, 1)) or (c == "v" and CreateVector2D(0, 0))
-					or (c == "w" and CreateVector3D(0, 0, 0)) or nil
+			for k = 1, n do
+				local c = tokens[k]
+				if c:sub(1, 1) == "{" then
+					local create = rawget(_G, "ModernUI_CreateObject")
+					values[k] = create and create(c:sub(2, -2)) or nil
+				else
+					values[k] = (c == "b" and false) or (c == "0" and 0) or (c == "s" and "") or (c == "t" and {})
+						or (c == "c" and CreateColor(1, 1, 1, 1)) or (c == "v" and CreateVector2D(0, 0))
+						or (c == "w" and CreateVector3D(0, 0, 0)) or nil
+				end
 			end
 			return unpack(values, 1, n)
 		end
@@ -6163,6 +6182,7 @@ local function answerFor(rets)
 	answers[rets] = f
 	return f
 end
+_G.ModernUI_SurfaceAnswerFor = answerFor
 
 -- Functions.
 for i = 1, #F, 3 do
@@ -6277,3 +6297,14 @@ if type(tables) == "table" then
 	end
 end
 
+-- The documented methods of each object type (LuaCurveObjectAPI = { AddPoint = "", ... }), for objects of
+-- types that have no hand-written implementation (35_Objects.lua).
+do
+	local docs = {}
+	for i = 1, #M, 3 do
+		local group = M[i]
+		docs[group] = docs[group] or {}
+		docs[group][M[i + 1]] = M[i + 2]
+	end
+	_G.ModernUI_ObjectMethodDocs = docs
+end

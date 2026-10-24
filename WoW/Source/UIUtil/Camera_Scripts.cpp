@@ -276,9 +276,47 @@ static int32_t Script_VehicleCameraZoomOut(lua_State* L) {
 
 // ModernUI: not in the original client. The camera's current distance from the character, as the
 // modern GetCameraZoom returns it (DialogueUI, Narcissus and others zoom relative to it).
+//
+// Modern clients answer with the zoom the camera is going to, so code that zooms by the difference to a goal
+// (CameraZoomIn(GetCameraZoom() - goal)) lands on the goal even while a view change or another zoom is still
+// moving the camera: the smoothing target, less any zoom-in and plus any zoom-out still to run.
 static int32_t Script_GetCameraZoom(lua_State* L) {
     CGCamera* camera = CGWorldFrame::GetActiveCamera();
-    lua_pushnumber(L, camera ? camera->m_distance : 0.0);
+
+    if (!camera) {
+        lua_pushnumber(L, 0.0);
+        return 1;
+    }
+
+    float distance = camera->m_smoothDistance.m_target;
+    uint32_t now = CSimpleTop::s_eventTime;
+    float speed = s_cvCameraDistanceMoveSpeed ? s_cvCameraDistanceMoveSpeed->m_floatValue : 0.0f;
+
+    for (uint32_t motion = 0; motion < 2; motion++) {
+        if ((camera->m_motionFlags & (1u << (2 * motion))) && camera->m_motionEndTime[motion]) {
+            int32_t remaining = static_cast<int32_t>(camera->m_motionEndTime[motion] - now);
+
+            if (remaining > 0) {
+                float change = speed * camera->m_motionSpeed[motion] * remaining * 0.001f;
+                distance += motion == 0 ? -change : change;
+            }
+        }
+    }
+
+    // The limits CGCamera::UpdateMotion holds a zoom to.
+    float minDistance = (camera->m_flags & 0x8) ? camera->m_overrideDistanceMin : 0.0f;
+    float maxDistance = 50.0f;
+
+    if (camera->m_flags & 0x10) {
+        maxDistance = camera->m_overrideDistanceMax;
+    } else if (!camera->m_vehicleZoomEnabled && s_cvCameraDistanceMaxFactor && s_cvCameraDistanceMax) {
+        maxDistance = s_cvCameraDistanceMaxFactor->m_floatValue * s_cvCameraDistanceMax->m_floatValue;
+        maxDistance = maxDistance < 0.0f ? 0.0f : (maxDistance > 50.0f ? 50.0f : maxDistance);
+    }
+
+    distance = distance < minDistance ? minDistance : (distance > maxDistance ? maxDistance : distance);
+
+    lua_pushnumber(L, distance);
     return 1;
 }
 

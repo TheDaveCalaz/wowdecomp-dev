@@ -3,7 +3,8 @@ local _G = _G
 local type, rawget, unpack, select, ipairs, pairs = type, rawget, unpack, select, ipairs, pairs
 
 -- One shared answer per return signature ("b0t" = false, 0, a new table; c = a white colour, v and w = zero
--- 2D and 3D vectors).
+-- 2D and 3D vectors; {Type} = a new object of a documented object type, such as a curve or a duration, made
+-- by ModernUI_CreateObject in 35_Objects.lua).
 local answers = {}
 local function answerFor(rets)
 	if rets == "" then
@@ -13,23 +14,41 @@ local function answerFor(rets)
 	if cached then
 		return cached
 	end
-	local n = #rets
+	local tokens = {}
+	local i = 1
+	while i <= #rets do
+		local c = rets:sub(i, i)
+		if c == "{" then
+			local close = rets:find("}", i, true)
+			tokens[#tokens + 1] = rets:sub(i, close)
+			i = close + 1
+		else
+			tokens[#tokens + 1] = c
+			i = i + 1
+		end
+	end
+	local n = #tokens
 	local f
-	if not rets:find("[tcvw]") then
+	if not rets:find("[tcvw{]") then
 		local values = {}
-		for i = 1, n do
-			local c = rets:sub(i, i)
-			values[i] = (c == "b" and false) or (c == "0" and 0) or (c == "s" and "") or nil
+		for k = 1, n do
+			local c = tokens[k]
+			values[k] = (c == "b" and false) or (c == "0" and 0) or (c == "s" and "") or nil
 		end
 		f = function() return unpack(values, 1, n) end
 	else
 		f = function()
 			local values = {}
-			for i = 1, n do
-				local c = rets:sub(i, i)
-				values[i] = (c == "b" and false) or (c == "0" and 0) or (c == "s" and "") or (c == "t" and {})
-					or (c == "c" and CreateColor(1, 1, 1, 1)) or (c == "v" and CreateVector2D(0, 0))
-					or (c == "w" and CreateVector3D(0, 0, 0)) or nil
+			for k = 1, n do
+				local c = tokens[k]
+				if c:sub(1, 1) == "{" then
+					local create = rawget(_G, "ModernUI_CreateObject")
+					values[k] = create and create(c:sub(2, -2)) or nil
+				else
+					values[k] = (c == "b" and false) or (c == "0" and 0) or (c == "s" and "") or (c == "t" and {})
+						or (c == "c" and CreateColor(1, 1, 1, 1)) or (c == "v" and CreateVector2D(0, 0))
+						or (c == "w" and CreateVector3D(0, 0, 0)) or nil
+				end
 			end
 			return unpack(values, 1, n)
 		end
@@ -37,6 +56,7 @@ local function answerFor(rets)
 	answers[rets] = f
 	return f
 end
+_G.ModernUI_SurfaceAnswerFor = answerFor
 
 -- Functions.
 for i = 1, #F, 3 do
@@ -149,4 +169,16 @@ if type(tables) == "table" then
 			end
 		end
 	end
+end
+
+-- The documented methods of each object type (LuaCurveObjectAPI = { AddPoint = "", ... }), for objects of
+-- types that have no hand-written implementation (35_Objects.lua).
+do
+	local docs = {}
+	for i = 1, #M, 3 do
+		local group = M[i]
+		docs[group] = docs[group] or {}
+		docs[group][M[i + 1]] = M[i + 2]
+	end
+	_G.ModernUI_ObjectMethodDocs = docs
 end

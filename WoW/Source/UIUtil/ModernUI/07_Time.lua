@@ -32,17 +32,7 @@ define("AbbreviateLargeNumbers", function(value)
 	return BreakUpLargeNumbers(value)
 end)
 
-define("AbbreviateNumbers", function(value)
-	local abs = value < 0 and -value or value
-	if abs >= 1e9 then
-		return ("%.2fB"):format(value / 1e9):gsub("%.?0+B$", "B")
-	elseif abs >= 1e6 then
-		return ("%.2fM"):format(value / 1e6):gsub("%.?0+M$", "M")
-	elseif abs >= 1e3 then
-		return ("%.2fK"):format(value / 1e3):gsub("%.?0+K$", "K")
-	end
-	return tostring(floor(value))
-end)
+-- AbbreviateNumbers (with its breakpoint options) is in 35_Objects.lua, beside the number formatters.
 
 -- SecondsFormatter -------------------------------------------------------------------------------
 

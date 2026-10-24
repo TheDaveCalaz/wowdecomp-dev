@@ -1328,6 +1328,17 @@ static void LoadAddOnInfo(const char* name) {
     while (true) {
         SStrTokenize(&toc, line, sizeof(line), "\r\n", nullptr);
 
+        // Not in the original: modern metadata can carry load conditions ("## Title: X [AllowLoadGameType
+        // wrath]", "## Dep: Y [AllowLoadGameType mainline]"); lines for other game types are skipped and the
+        // conditions are not part of the value.
+        if (line[0] == '#' && line[1] == '#' && !FrameXML_ApplyTocConditions(line)) {
+            if (!toc || !*toc) {
+                break;
+            }
+
+            continue;
+        }
+
         if (line[0] == '#' && line[1] == '#') {
             char* p = &line[2];
 

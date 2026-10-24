@@ -19,6 +19,7 @@
 #include "Engine/Source/Frame/CSimpleTexture.h"
 #include "Engine/Source/FrameScript/FrameScript.h"
 #include "Engine/Source/FrameXML/XMLTree.h"
+#include "Engine/Source/Gx/CGxTex.h"
 #include "Engine/Source/Services/Texture.h"
 #include "Engine/Source/Services/TextureImage.h"
 #include "Engine/Source/Storm/H/storm.h"
@@ -40,6 +41,16 @@ struct Image {
 
 std::unordered_map<std::string, Image> s_images;
 
+// Problems go to Logs\LuaErrors.log, once each, so a mask that cannot be drawn can be traced.
+void LogOnce(const std::string& message) {
+    static std::unordered_map<std::string, bool> s_logged;
+
+    if (s_logged.size() < 200 && !s_logged[message]) {
+        s_logged[message] = true;
+        FrameScript_LogError(message.c_str());
+    }
+}
+
 const Image& LoadImage(const char* name) {
     std::string key = name ? name : "";
     Image& image = s_images[key];
@@ -47,6 +58,10 @@ const Image& LoadImage(const char* name) {
     if (!image.loaded) {
         image.loaded = true;
         image.valid = !key.empty() && ModernUI_DecodeTextureFile(key.c_str(), image.width, image.height, image.bgra);
+
+        if (!image.valid && !key.empty() && SStrCmpI(key.c_str(), "SolidTexture", STORM_MAX_STR)) {
+            LogOnce("ModernUI masks: could not read the image " + key);
+        }
 
         if (image.valid) {
             for (size_t i = 3; i < image.bgra.size(); i += 4) {
@@ -83,6 +98,35 @@ void UpdateComposed(EGxTexCommand command, uint32_t width, uint32_t height, uint
     size_t index = level < composed->levels.size() ? level : composed->levels.size() - 1;
     texelStrideInBytes = 4 * composed->widths[index];
     texels = composed->levels[index].data();
+}
+
+// A full cache (a masked texture that keeps changing size makes a new image each time) starts again. The images
+// are kept one round longer, as a texture drawn this frame may still be queued.
+std::vector<Composed*> s_retired;
+
+void FreeComposed(Composed* composed) {
+    if (composed->texture) {
+        s_byTexture.erase(reinterpret_cast<CTexture*>(composed->texture));
+        HandleClose(reinterpret_cast<HOBJECT>(composed->texture));
+    }
+
+    delete composed;
+}
+
+void RetireComposed() {
+    for (Composed* composed : s_retired) {
+        FreeComposed(composed);
+    }
+
+    s_retired.clear();
+
+    for (auto& entry : s_composed) {
+        if (entry.second) {
+            s_retired.push_back(entry.second);
+        }
+    }
+
+    s_composed.clear();
 }
 
 // Bilinear interpolation of the four corners (top left, bottom left, top right, bottom right).
@@ -311,6 +355,20 @@ CTexture* ModernUI_MaskedTexture(CSimpleTexture* texture) {
     std::string key = sourceName;
     key += '|';
 
+    // A colour texture (SetColorTexture, <Color>) is an 8x8 image of one colour, kept with its CGxTex.
+    Image solid;
+
+    if (!SStrCmpI(sourceName, "SolidTexture", STORM_MAX_STR) && texture->m_texture->m_gxTex) {
+        uint32_t bgra = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(texture->m_texture->m_gxTex->m_userArg));
+        solid.loaded = solid.valid = true;
+        solid.width = solid.height = 1;
+        solid.bgra = { static_cast<uint8_t>(bgra), static_cast<uint8_t>(bgra >> 8), static_cast<uint8_t>(bgra >> 16), static_cast<uint8_t>(bgra >> 24) };
+        solid.hasAlpha = solid.bgra[3] != 0xFF;
+        char colour[16];
+        snprintf(colour, sizeof(colour), "%08x|", bgra);
+        key += colour;
+    }
+
     for (const C2Vector& tc : texture->m_texCoords) {
         Append(key, tc.x);
         Append(key, tc.y);
@@ -371,18 +429,19 @@ CTexture* ModernUI_MaskedTexture(CSimpleTexture* texture) {
     }
 
     if (s_composed.size() >= MAX_COMPOSED) {
-        return nullptr;
+        RetireComposed();
     }
 
-    const Image& source = LoadImage(sourceName);
+    const Image& source = solid.valid ? solid : LoadImage(sourceName);
+    bool sizeFromSource = source.valid && !solid.valid;
 
     // The size of the composition: the source texels the texture shows, or the first mask's when the texture
     // has no image of its own (a colour).
     float spanU = std::fabs(texture->m_texCoords[2].x - texture->m_texCoords[0].x) + std::fabs(texture->m_texCoords[1].x - texture->m_texCoords[0].x);
     float spanV = std::fabs(texture->m_texCoords[1].y - texture->m_texCoords[0].y) + std::fabs(texture->m_texCoords[2].y - texture->m_texCoords[0].y);
-    const Image& sizing = source.valid ? source : *places[0].image;
-    uint32_t outW = static_cast<uint32_t>(sizing.width * (source.valid ? (spanU > 0.0f ? spanU : 1.0f) : places[0].width ? 1.0f / places[0].width : 1.0f));
-    uint32_t outH = static_cast<uint32_t>(sizing.height * (source.valid ? (spanV > 0.0f ? spanV : 1.0f) : places[0].height ? 1.0f / places[0].height : 1.0f));
+    const Image& sizing = sizeFromSource ? source : *places[0].image;
+    uint32_t outW = static_cast<uint32_t>(sizing.width * (sizeFromSource ? (spanU > 0.0f ? spanU : 1.0f) : places[0].width ? 1.0f / places[0].width : 1.0f));
+    uint32_t outH = static_cast<uint32_t>(sizing.height * (sizeFromSource ? (spanV > 0.0f ? spanV : 1.0f) : places[0].height ? 1.0f / places[0].height : 1.0f));
     outW = outW < 8 ? 8 : (outW > 512 ? 512 : outW);
     outH = outH < 8 ? 8 : (outH > 512 ? 512 : outH);
 
@@ -436,6 +495,7 @@ CTexture* ModernUI_MaskedTexture(CSimpleTexture* texture) {
     composed->texture = MakeTexture(composed, static_cast<uint32_t>(s_composed.size()) + 1);
 
     if (!composed->texture) {
+        LogOnce(std::string("ModernUI masks: could not make the masked image for ") + sourceName);
         delete composed;
         s_composed[key] = nullptr;
         return nullptr;
@@ -530,6 +590,8 @@ void ModernUI_ResolveXMLMasks(CSimpleFrame* frame) {
 
             if (texture) {
                 ModernUI_AddMask(texture, pending.mask);
+            } else {
+                LogOnce("ModernUI masks: <MaskedTexture childKey=\"" + key + "\"> names no texture of frame " + (frame->GetName() ? frame->GetName() : "(unnamed)"));
             }
 
             lua_settop(L, top);
