@@ -27,7 +27,9 @@ typedef LUAI_MEM l_mem;
 typedef unsigned char lu_byte;
 
 
-#define MAX_SIZET	0x1000000
+/* ModernUI: the original allowed no single block (a table's array, a string) over 16 MB; later clients lift
+** this, and AddOns with large data (Questie's database) need it. */
+#define MAX_SIZET	((size_t)0x7FFFFFF0)
 
 #define MAX_LUMEM	((lu_mem)(~(lu_mem)0)-2)
 

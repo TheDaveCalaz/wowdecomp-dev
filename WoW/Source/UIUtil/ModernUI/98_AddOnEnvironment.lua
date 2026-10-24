@@ -146,3 +146,12 @@ if toModern then
 		end
 	end
 end
+
+-- UnitClassBase: this client answers the class's name and file name; modern clients the file name and class ID.
+do
+	local UnitClass_global = _G.UnitClass
+	modern.UnitClassBase = function(unit)
+		local _, file, id = UnitClass_global(unit)
+		return file, id
+	end
+end
