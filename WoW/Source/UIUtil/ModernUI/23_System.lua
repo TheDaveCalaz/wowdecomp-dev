@@ -1159,3 +1159,45 @@ do
 	set("IsLoggedIn", falseFn)
 	set("IsEnabled", falseFn)
 end
+
+-- CVars of modern clients that AddOns read or set. Registered with their modern defaults so GetCVar answers
+-- (and SetCVar keeps a value) as on a modern client; this client's own CVars are left as they are.
+if RegisterCVar then
+	local modernCVars = {
+		test_cameraOverShoulder = "0", test_cameraDynamicPitch = "0", test_cameraDynamicPitchBaseFovPad = "0.4",
+		test_cameraDynamicPitchBaseFovPadFlying = "0.75", test_cameraDynamicPitchBaseFovPadDownScale = "0.25",
+		test_cameraDynamicPitchSmartPivotCutoffDist = "10", test_cameraHeadMovementStrength = "0",
+		test_cameraTargetFocusEnemyEnable = "0", test_cameraTargetFocusInteractEnable = "0",
+		test_cameraTargetFocusEnemyStrengthPitch = "0.4", test_cameraTargetFocusEnemyStrengthYaw = "0.5",
+		test_cameraTargetFocusInteractStrengthPitch = "0.75", test_cameraTargetFocusInteractStrengthYaw = "1",
+		cameraFov = "90", cameraKeepCharacterCentered = "1", cameraReduceUnexpectedMovement = "0",
+		CameraKeepCharacterCentered = "1",
+		nameplateMaxDistance = "41", nameplateHorizontalScale = "1", nameplateVerticalScale = "1",
+		nameplateOverlapH = "0.8", nameplateOverlapV = "1.1", nameplatePlayerMaxDistance = "60",
+		nameplateShowOnlyNames = "0", nameplateShowAll = "1", nameplateShowFriendlyNPCs = "0",
+		nameplateShowSelf = "0", nameplateMotion = "0", nameplateMotionSpeed = "0.025",
+		nameplateMinScale = "0.8", nameplateMaxScale = "1", nameplateMinAlpha = "0.6", nameplateMaxAlpha = "1",
+		nameplateSelectedScale = "1.2", nameplateSelectedAlpha = "1", nameplateLargerScale = "1.2",
+		nameplateGlobalScale = "1", nameplateSelfScale = "1", nameplateSelfAlpha = "0.75",
+		nameplateOtherTopInset = "0.08", nameplateOtherBottomInset = "0.1", nameplateLargeTopInset = "0.1",
+		nameplateLargeBottomInset = "0.15", nameplateTargetBehindMaxDistance = "15", nameplateOccludedAlphaMult = "0.4",
+		nameplateShowFriendlyGuardians = "0", nameplateShowFriendlyMinions = "0", nameplateShowFriendlyPets = "0",
+		nameplateShowFriendlyTotems = "0", nameplateShowEnemyGuardians = "1", nameplateShowEnemyMinions = "1",
+		nameplateShowEnemyMinus = "1", nameplateShowEnemyPets = "1", nameplateShowEnemyTotems = "1",
+		nameplateResourceOnTarget = "0", nameplateShowDebuffsOnFriendly = "0",
+		ActionButtonUseKeyDown = "0", combinedBags = "0", countdownForCooldowns = "0", cursorSizePreferred = "-1",
+		encounterTimelineEnabled = "0", encounterTimelineHighlightDuration = "0", encounterTimelineShowSequenceCount = "0",
+		encounterWarningsEnabled = "0", GamePadEnable = "0", graphicsOutlineMode = "0", instantQuestText = "0",
+		MSAAQuality = "0", outline = "0", shadowRt = "0", showOutfitDetails = "1", SoftTargetInteract = "0",
+		Sound_DialogVolume = "1", Sound_EnableDialog = "1", colorblindMode = "0", colorblindSimulator = "0",
+		threatWarning = "3", showTargetOfTarget = "1", lockActionBars = "1", showQuestTrackingTooltips = "1",
+		autoLootDefault = "0", interactOnLeftClick = "0", ResampleAlwaysSharpen = "0", ResampleQuality = "0",
+		renderScale = "1", useUiScale = "0", uiScale = "1", scriptErrors = "0", taintLog = "0",
+	}
+	local getCVar = GetCVar
+	for name, value in pairs(modernCVars) do
+		if getCVar(name) == nil then
+			pcall(RegisterCVar, name, value)
+		end
+	end
+end
