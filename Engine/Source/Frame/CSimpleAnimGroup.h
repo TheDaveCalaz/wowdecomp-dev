@@ -64,6 +64,7 @@ class CSimpleAnimGroup : public CScriptObject {
     void ComputeDuration();
     void DoGroupUpdateWork(float elapsedSec);
     TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* FindAnimList(int32_t order);
+    TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* CurrentAnimList(); // ModernUI
     void Finish();
     int32_t GetMaxAnimOrder();
     bool HasAnimOfType(int32_t type);

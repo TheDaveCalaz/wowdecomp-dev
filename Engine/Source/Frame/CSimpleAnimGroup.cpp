@@ -230,6 +230,20 @@ int32_t CSimpleAnimGroup::GetMaxAnimOrder() {
 
 // VERIFY: 8a3f8fbc manual
 // OFFSET: 0x00498A70
+// ModernUI: the animations of the current order, or an empty list when the group has none at that order (a group
+// played or stopped with no animations, or whose orders changed). The original indexed the array unchecked, and
+// stopping such a group crashed the client (Narcissus on closing).
+TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* CSimpleAnimGroup::CurrentAnimList() {
+    static TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> > s_empty;
+
+    if (this->m_currentOrder < 0 || static_cast<uint32_t>(this->m_currentOrder) >= this->m_animLists.Count()) {
+        return &s_empty;
+    }
+
+    TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[this->m_currentOrder];
+    return list ? list : &s_empty;
+}
+
 TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* CSimpleAnimGroup::FindAnimList(int32_t order) {
     if (order == -1) {
         return nullptr;
@@ -568,7 +582,7 @@ bool CSimpleAnimGroup::Play() {
             }
         }
 
-        TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[this->m_currentOrder];
+        TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->CurrentAnimList();
 
         if (this->m_loopState == ANIM_LOOPSTATE_REVERSE) {
             for (SIMPLEANIMNODE* node = list->Tail(); node; node = list->Prev(node)) {
@@ -601,7 +615,7 @@ void CSimpleAnimGroup::Pause() {
 
     this->m_flags = (this->m_flags & ~0xC) | 0x4;
 
-    TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[this->m_currentOrder];
+    TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->CurrentAnimList();
 
     for (SIMPLEANIMNODE* node = list->Head(); node; node = list->Next(node)) {
         node->m_anim->Pause();
@@ -627,7 +641,7 @@ bool CSimpleAnimGroup::NotifyAnimStopped(CSimpleAnim* anim) {
 
     this->m_flags = (this->m_flags & ~0x28) | 0x20;
 
-    TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[this->m_currentOrder];
+    TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->CurrentAnimList();
 
     for (SIMPLEANIMNODE* node = list->Head(); node; node = list->Next(node)) {
         if (node->m_anim != anim) {
@@ -706,7 +720,7 @@ void CSimpleAnimGroup::Stop(bool requested) {
 
     this->m_flags = (this->m_flags & ~0x28) | 0x20;
 
-    TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[this->m_currentOrder];
+    TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->CurrentAnimList();
 
     for (SIMPLEANIMNODE* node = list->Head(); node; node = list->Next(node)) {
         node->m_anim->Stop(requested);
@@ -787,7 +801,7 @@ void CSimpleAnimGroup::AdvanceLoopState(float elapsedSec, float remaining) {
     this->m_currentOrder += step;
 
     if (this->m_currentOrder != end) {
-        TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[this->m_currentOrder];
+        TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->CurrentAnimList();
 
         for (SIMPLEANIMNODE* node = list->Head(); node; node = list->Next(node)) {
             node->m_anim->Play();
@@ -864,7 +878,7 @@ void CSimpleAnimGroup::AdvanceLoopState(float elapsedSec, float remaining) {
     }
 
     if (this->m_flags & 0x8) {
-        TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[this->m_currentOrder];
+        TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->CurrentAnimList();
 
         for (SIMPLEANIMNODE* node = list->Head(); node; node = list->Next(node)) {
             node->m_anim->ApplyInverse(1.0f);
@@ -931,7 +945,7 @@ void CSimpleAnimGroup::DoGroupUpdateWork(float elapsedSec) {
     bool reverse = this->m_loopState == ANIM_LOOPSTATE_REVERSE;
 
     if (!reverse) {
-        for (int32_t i = 0; i < this->m_currentOrder; i++) {
+        for (int32_t i = 0; i < this->m_currentOrder && static_cast<uint32_t>(i) < this->m_animLists.Count(); i++) {
             TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[i];
 
             for (SIMPLEANIMNODE* node = list->Head(); node; node = list->Next(node)) {
@@ -945,7 +959,7 @@ void CSimpleAnimGroup::DoGroupUpdateWork(float elapsedSec) {
     }
 
     if (this->m_flags & 0x4) {
-        TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[this->m_currentOrder];
+        TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->CurrentAnimList();
 
         for (SIMPLEANIMNODE* node = list->Head(); node; node = list->Next(node)) {
             node->m_anim->Apply(node->m_anim->m_smoothProgress);
@@ -961,7 +975,7 @@ void CSimpleAnimGroup::DoGroupUpdateWork(float elapsedSec) {
 
             float maxConsumed = 0.0f;
             bool finished = true;
-            TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[this->m_currentOrder];
+            TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->CurrentAnimList();
 
             if (this->m_loopState == ANIM_LOOPSTATE_REVERSE) {
                 for (SIMPLEANIMNODE* node = list->Tail(); node; node = list->Prev(node)) {
@@ -1005,6 +1019,11 @@ void CSimpleAnimGroup::DoGroupUpdateWork(float elapsedSec) {
                 this->AdvanceLoopState(elapsedSec, remaining);
             }
 
+            // ModernUI: a group with nothing to play at this order would otherwise loop here without end.
+            if (!list->Head()) {
+                break;
+            }
+
             if (remaining <= 0.0001f || this->IsDone() || !this->m_loopState || (this->m_flags & 0x4)) {
                 break;
             }
@@ -1012,7 +1031,7 @@ void CSimpleAnimGroup::DoGroupUpdateWork(float elapsedSec) {
     }
 
     if (reverse && this->m_loopState) {
-        for (int32_t i = 0; i < this->m_currentOrder; i++) {
+        for (int32_t i = 0; i < this->m_currentOrder && static_cast<uint32_t>(i) < this->m_animLists.Count(); i++) {
             TSList<SIMPLEANIMNODE, TSGetLink<SIMPLEANIMNODE> >* list = this->m_animLists[i];
 
             for (SIMPLEANIMNODE* node = list->Tail(); node; node = list->Prev(node)) {
